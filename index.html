@@ -183,8 +183,18 @@
     .sets-header { display: grid; grid-template-columns: 36px 1fr 1fr 44px; gap: 0; padding: 8px 12px; border-bottom: 1px solid var(--border); }
     .sets-header span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); text-align: center; }
     .sets-header span:first-child { text-align: left; }
-    .set-row { display: grid; grid-template-columns: 36px 1fr 1fr 44px; gap: 0; padding: 6px 12px; border-bottom: 1px solid var(--border); align-items: center; }
-    .set-row:last-child { border-bottom: none; }
+    .set-row-wrap { position: relative; overflow: hidden; }
+    .set-row-wrap:last-child .set-row { border-bottom: none; }
+    .set-row-delete-bg {
+      position: absolute; inset: 0; background: #ff3b30; color: #fff;
+      display: flex; align-items: center; justify-content: flex-end; padding-right: 22px; font-size: 16px;
+    }
+    .set-row {
+      display: grid; grid-template-columns: 36px 1fr 1fr 44px; gap: 0; padding: 6px 12px;
+      border-bottom: 1px solid var(--border); align-items: center;
+      background: var(--bg2); position: relative; touch-action: pan-y;
+      transition: transform 0.2s ease;
+    }
     .set-num { font-size: 12px; font-weight: 700; color: var(--text2); }
     .set-num-btn {
       background: var(--bg3); border: none; border-radius: 8px; width: 28px; height: 28px;
@@ -303,6 +313,10 @@
     .exercise-block.confirm-round .sets-table { border-color: #ffb300; }
     .exercise-block.confirm-round .exercise-header { border-left: 3px solid #ffb300; background: rgba(255,179,0,0.08); }
     .confirm-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #ffb300; background: rgba(255,179,0,0.18); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: middle; }
+    .rep-ladder { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+    .rep-ladder span.lbl { font-size: 10px; color: var(--text2); margin-right: 2px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
+    .rep-ladder .dot { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; background: var(--bg3); color: var(--text2); flex-shrink: 0; }
+    .rep-ladder .dot.ok { background: rgba(0,230,118,0.22); color: var(--accent); }
     .fixed-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text2); background: var(--bg3); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: middle; }
     .mode-toggle-btn { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer; }
     .mode-toggle-btn.fixed { background: rgba(136,136,136,0.15); color: var(--text); border-color: var(--text2); }
@@ -426,7 +440,7 @@
           <button class="btn-icon" onclick="toggleTheme()" title="Thème clair / sombre">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           </button>
-          <button class="btn btn-ghost btn-sm" onclick="openModal('modal-sync')" title="Transférer mes données">
+          <button class="btn btn-ghost btn-sm" onclick="openSyncModal()" title="Transférer mes données">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
             Sync
           </button>
@@ -498,6 +512,15 @@
         <select class="form-input" id="template-select">
           <option value="">Séance libre</option>
         </select>
+      </div>
+      <button class="btn btn-secondary btn-sm btn-full" id="repeat-free-btn" style="display:none;margin-bottom:14px" onclick="startQuickRepeat()">⚡ Répéter la dernière séance libre</button>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Minuteur de repos</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:10px">
+          <span style="font-size:13px">Activer après chaque série validée</span>
+          <button type="button" class="mode-toggle-btn" id="rest-enabled-btn" onclick="toggleRestEnabled()">Activé</button>
+        </div>
+        <div class="tag-list" id="rest-duration-options"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -732,6 +755,15 @@
         <textarea class="form-input" id="import-code" rows="4" placeholder="Colle ici le code exporté depuis l'autre appareil…" style="font-size:11px;font-family:monospace;resize:none;word-break:break-all;margin-bottom:8px"></textarea>
         <button class="btn btn-primary btn-full" onclick="importData()">Importer les données</button>
         <p style="font-size:11px;color:var(--text2);margin-top:6px">⚠️ Remplacera toutes les données actuelles de cet appareil.</p>
+      </div>
+
+      <div class="divider" style="margin:20px 0"></div>
+
+      <div>
+        <p class="form-label" style="margin-bottom:8px">③ Sauvegarde automatique (filet de sécurité)</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Une copie de tes données est enregistrée automatiquement sur cet appareil à chaque séance, en plus du stockage habituel — utile si le navigateur efface ses données.</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px" id="backup-status">Vérification…</p>
+        <button class="btn btn-ghost btn-full" onclick="restoreFromBackup()">Restaurer la dernière sauvegarde auto</button>
       </div>
     </div>
   </div>
@@ -1033,7 +1065,51 @@ function startNewSession() {
   populateTemplateSelect();
   document.getElementById('session-name-input').value = '';
   document.getElementById('template-select').value = '';
+  renderRestOptions();
+  const repeatBtn = document.getElementById('repeat-free-btn');
+  const lastFree = findLastFreeSession();
+  if (lastFree) {
+    repeatBtn.style.display = 'block';
+    repeatBtn.textContent = `⚡ Répéter "${lastFree.name}" (${formatDate(lastFree.date)})`;
+  } else {
+    repeatBtn.style.display = 'none';
+  }
   openModal('modal-start');
+}
+
+// Dernière séance "libre" (sans template) — utilisée pour la répéter en 1 clic
+function findLastFreeSession() {
+  const sessions = [...db.sessions]
+    .filter(s => s.type !== 'cardio' && !s.templateId && s.exercises && s.exercises.length)
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
+  return sessions[0] || null;
+}
+
+// Mode "entraînement rapide" : reprend exactement les exercices/séries de la
+// dernière séance libre (mêmes poids/reps proposés, sans recalcul de suggestion)
+// pour ne pas tout retaper, sets remis à "non faits"
+function startQuickRepeat() {
+  const last = findLastFreeSession();
+  if (!last) return;
+  activeSession = {
+    id: Date.now().toString(),
+    name: last.name,
+    date: new Date().toISOString(),
+    templateId: null,
+    notes: '',
+    exercises: last.exercises.map(ex => {
+      let sets = ex.sets
+        .filter(s => s.weight || s.reps)
+        .map(s => ({ weight: s.weight, reps: s.reps, warmup: !!s.warmup, done: false }));
+      if (!sets.length) sets = [{ weight: '', reps: '10', done: false }];
+      return { name: ex.name, progression: ex.progression, supersetId: ex.supersetId, sets };
+    })
+  };
+  closeModal('modal-start');
+  navigate('session');
+  renderSessionView();
+  startTimer();
+  hideRestTimer();
 }
 
 function populateTemplateSelect() {
@@ -1069,6 +1145,22 @@ function getExerciseHistory(exerciseName, limit) {
 // Retrouve les sets de la dernière séance pour un exercice donné
 function getLastExerciseData(exerciseName) {
   return getExerciseHistory(exerciseName, 1)[0] || null;
+}
+
+// Petit historique visuel (✅/▫️) des N dernières séances où l'exercice a été
+// fait à 14 reps ou plus — utilisé pendant la séance de confirmation pour voir
+// la progression d'un coup d'œil. Retourne du plus ancien au plus récent.
+function getRepLadderHistory(exerciseName, limit) {
+  const hist = getExerciseHistory(exerciseName, limit);
+  return hist.reverse().map(sets => {
+    const working = workingSetsOf(sets);
+    if (!working || !working.length) return false;
+    const counts = {};
+    working.forEach(s => { const r = parseInt(s.reps) || 0; counts[r] = (counts[r]||0) + 1; });
+    let bestReps = 0, bestCount = 0;
+    Object.entries(counts).forEach(([r,c]) => { if (c > bestCount) { bestCount = c; bestReps = parseInt(r); } });
+    return bestReps >= 14;
+  });
 }
 
 // Progression suggérée : les reps montent de 1 à chaque séance (10→11→12→13→14).
@@ -1177,6 +1269,7 @@ function renderSessionView() {
   document.getElementById('session-date').textContent = new Date(activeSession.date).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
   document.getElementById('session-notes-input').value = activeSession.notes || '';
   renderExercises();
+  initSwipeToDelete();
 }
 
 function renderExercises() {
@@ -1201,6 +1294,10 @@ function renderExercises() {
           ? `🔒 Confirme ces ${suggestion.reps} reps à ${suggestion.weight || '–'} kg → +2 kg la prochaine fois`
           : `Objectif : ${suggestion.weight || '–'} kg × ${suggestion.reps}`)
       : null;
+    const ladder = isConfirmRound ? getRepLadderHistory(ex.name, 5) : null;
+    const ladderHtml = ladder && ladder.length
+      ? `<div class="rep-ladder"><span class="lbl">14 reps</span>${ladder.map(ok => `<span class="dot ${ok?'ok':''}">${ok?'✓':'·'}</span>`).join('')}</div>`
+      : '';
 
     return `
     <div class="exercise-block ${ex.supersetId?'superset':''} ${isConfirmRound?'confirm-round':''}">
@@ -1209,6 +1306,7 @@ function renderExercises() {
           <span class="exercise-name">${ex.name}</span>${ex.supersetId ? '<span class="superset-badge">🔗 Superset</span>' : ''}${isFixed ? '<span class="fixed-badge">📌 Fixe</span>' : ''}${isConfirmRound ? '<span class="confirm-badge">🔒 Confirmation</span>' : ''}
           ${lastHint ? `<div style="font-size:11px;color:var(--text2);margin-top:3px">Dernière fois : ${lastHint}</div>` : ''}
           ${suggestionHint ? `<div style="font-size:11px;color:${isConfirmRound?'#ffb300':'var(--accent)'};margin-top:2px;font-weight:600">${suggestionHint}</div>` : ''}
+          ${ladderHtml}
         </div>
         <div style="display:flex;gap:2px;align-items:center">
           <button class="btn-icon" style="background:transparent;border:none;color:${ex.supersetId?'var(--accent2)':'var(--text2)'};padding:6px" onclick="openSupersetPicker(${ei})" title="${ex.supersetId?'Dissocier le superset':'Associer en superset'}">
@@ -1234,13 +1332,16 @@ function renderExercises() {
           const phWeight = prev && prev.weight ? prev.weight : '0';
           const phReps   = prev && prev.reps   ? prev.reps   : '0';
           return `
-          <div class="set-row ${s.warmup?'warmup-row':''}" id="set-${ei}-${si}">
-            <button class="set-num-btn ${s.warmup?'warmup':''}" onclick="toggleWarmup(${ei},${si})" title="Marquer comme échauffement">${s.warmup?'W':si+1}</button>
-            <input class="set-input" type="number" inputmode="decimal" placeholder="${phWeight}" value="${s.weight}" onchange="updateSet(${ei},${si},'weight',this.value)" ${s.done?'style="opacity:0.5"':''}>
-            <input class="set-input" type="number" inputmode="numeric" placeholder="${phReps}" value="${s.reps}" onchange="updateSet(${ei},${si},'reps',this.value)" ${s.done?'style="opacity:0.5"':''}>
-            <button class="set-done-btn ${s.done?'done':''}" onclick="toggleSetDone(${ei},${si})">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </button>
+          <div class="set-row-wrap" data-ei="${ei}" data-si="${si}">
+            <div class="set-row-delete-bg" onclick="deleteSet(${ei},${si})">🗑 Supprimer</div>
+            <div class="set-row ${s.warmup?'warmup-row':''}" id="set-${ei}-${si}">
+              <button class="set-num-btn ${s.warmup?'warmup':''}" onclick="toggleWarmup(${ei},${si})" title="Marquer comme échauffement">${s.warmup?'W':si+1}</button>
+              <input class="set-input" type="number" inputmode="decimal" placeholder="${phWeight}" value="${s.weight}" onchange="updateSet(${ei},${si},'weight',this.value)" ${s.done?'style="opacity:0.5"':''}>
+              <input class="set-input" type="number" inputmode="numeric" placeholder="${phReps}" value="${s.reps}" onchange="updateSet(${ei},${si},'reps',this.value)" ${s.done?'style="opacity:0.5"':''}>
+              <button class="set-done-btn ${s.done?'done':''}" onclick="toggleSetDone(${ei},${si})">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
           </div>`;
         }).join('')}
         <button class="add-set-btn" onclick="addSet(${ei})">
@@ -1263,7 +1364,7 @@ function toggleSetDone(ei, si) {
   if (btn) btn.classList.toggle('done', set.done);
   const inputs = document.querySelectorAll(`#set-${ei}-${si} .set-input`);
   inputs.forEach(inp => inp.style.opacity = set.done ? '0.5' : '1');
-  if (set.done) startRestTimer();
+  if (set.done && sessionRestEnabled) startRestTimer(sessionRestDuration);
 }
 
 function toggleWarmup(ei, si) {
@@ -1281,6 +1382,59 @@ function addSet(ei) {
     const container = document.getElementById('exercises-container');
     container.scrollTop = container.scrollHeight;
   }, 50);
+}
+
+// Supprime une série (via le swipe ou le bouton révélé) — garde toujours au
+// moins une ligne pour ne pas perdre l'exercice
+function deleteSet(ei, si) {
+  const ex = activeSession.exercises[ei];
+  if (!ex) return;
+  ex.sets.splice(si, 1);
+  if (!ex.sets.length) ex.sets.push({ weight: '', reps: '10', done: false });
+  renderExercises();
+}
+
+// Swipe vers la gauche sur une série pour révéler le bouton de suppression
+// (delegation sur le conteneur, qui persiste malgré les re-render)
+let swipeState = null;
+function initSwipeToDelete() {
+  const container = document.getElementById('exercises-container');
+  if (!container || container.dataset.swipeInit) return;
+  container.dataset.swipeInit = '1';
+
+  container.addEventListener('touchstart', e => {
+    const wrap = e.target.closest('.set-row-wrap');
+    container.querySelectorAll('.set-row-wrap.swiped').forEach(w => {
+      if (w !== wrap) {
+        w.classList.remove('swiped');
+        const r = w.querySelector('.set-row');
+        if (r) r.style.transform = '';
+      }
+    });
+    if (!wrap) { swipeState = null; return; }
+    const row = wrap.querySelector('.set-row');
+    swipeState = { wrap, row, startX: e.touches[0].clientX };
+  }, { passive: true });
+
+  container.addEventListener('touchmove', e => {
+    if (!swipeState) return;
+    const dx = Math.min(0, Math.max(-90, e.touches[0].clientX - swipeState.startX));
+    swipeState.row.style.transform = `translateX(${dx}px)`;
+    swipeState.dx = dx;
+  }, { passive: true });
+
+  container.addEventListener('touchend', () => {
+    if (!swipeState) return;
+    const { row, wrap, dx } = swipeState;
+    if (dx && dx < -60) {
+      row.style.transform = 'translateX(-90px)';
+      wrap.classList.add('swiped');
+    } else {
+      row.style.transform = '';
+      wrap.classList.remove('swiped');
+    }
+    swipeState = null;
+  });
 }
 
 function removeExercise(ei) {
@@ -1400,6 +1554,7 @@ function saveSession() {
 
   db.sessions.push(activeSession);
   saveDB();
+  saveBackupSnapshot();
   stopTimer();
   hideRestTimer();
   advanceProgram();
@@ -1440,7 +1595,7 @@ function showRecap(session) {
     ${db.sessions.length > 0 && db.sessions.length % 10 === 0 ? `
       <div class="card" style="margin-top:8px;border-color:var(--accent2)">
         <div style="font-size:13px;color:var(--text2);margin-bottom:10px">💾 Ça fait ${db.sessions.length} séances enregistrées — pense à sauvegarder tes données.</div>
-        <button class="btn btn-secondary btn-sm btn-full" onclick="closeRecap();exportData();openModal('modal-sync')">Copier le code de sauvegarde</button>
+        <button class="btn btn-secondary btn-sm btn-full" onclick="closeRecap();exportData();openSyncModal()">Copier le code de sauvegarde</button>
       </div>` : ''}
   `;
   showToast('Séance sauvegardée !');
@@ -1480,9 +1635,49 @@ function saveQuickLog() {
   };
   db.sessions.push(session);
   saveDB();
+  saveBackupSnapshot();
   closeModal('modal-quicklog');
   renderHome();
   showToast('Séance enregistrée !');
+}
+
+// ==================== PRÉFÉRENCES MINUTEUR DE REPOS ====================
+// Choisi au lancement de chaque séance (modal "Nouvelle séance"), mémorisé
+// d'une séance à l'autre comme valeur par défaut.
+const REST_DURATION_PRESETS = [30, 45, 60, 90, 120, 180];
+let sessionRestEnabled = true;
+let sessionRestDuration = 120;
+
+function loadRestPrefs() {
+  const storedEnabled = localStorage.getItem('fittrack_rest_enabled');
+  const storedDuration = parseInt(localStorage.getItem('fittrack_rest_duration'));
+  sessionRestEnabled = storedEnabled === null ? true : storedEnabled === '1';
+  sessionRestDuration = REST_DURATION_PRESETS.includes(storedDuration) ? storedDuration : 120;
+}
+
+function toggleRestEnabled() {
+  sessionRestEnabled = !sessionRestEnabled;
+  localStorage.setItem('fittrack_rest_enabled', sessionRestEnabled ? '1' : '0');
+  renderRestOptions();
+}
+
+function setRestDuration(sec) {
+  sessionRestDuration = sec;
+  localStorage.setItem('fittrack_rest_duration', String(sec));
+  renderRestOptions();
+}
+
+function renderRestOptions() {
+  const btn = document.getElementById('rest-enabled-btn');
+  if (!btn) return;
+  btn.textContent = sessionRestEnabled ? 'Activé' : 'Désactivé';
+  btn.classList.toggle('fixed', !sessionRestEnabled);
+  const wrap = document.getElementById('rest-duration-options');
+  wrap.style.opacity = sessionRestEnabled ? '1' : '0.4';
+  wrap.style.pointerEvents = sessionRestEnabled ? 'auto' : 'none';
+  wrap.innerHTML = REST_DURATION_PRESETS.map(sec => `
+    <div class="tag" style="cursor:pointer;${sec===sessionRestDuration?'background:var(--accent);color:#000;font-weight:700':''}" onclick="setRestDuration(${sec})">${sec}s</div>
+  `).join('');
 }
 
 // ==================== REST TIMER ====================
@@ -2198,6 +2393,92 @@ function importData() {
   }
 }
 
+// ==================== SAUVEGARDE AUTOMATIQUE (IndexedDB) ====================
+// Filet de sécurité en plus du localStorage : à chaque séance enregistrée, on
+// garde aussi une copie dans IndexedDB (stockage séparé, moins souvent purgé
+// par le navigateur/iOS que le localStorage).
+const BACKUP_DB_NAME = 'fittrack_backup';
+const BACKUP_STORE = 'snapshots';
+const BACKUP_KEEP = 20;
+let backupDBPromise = null;
+
+function openBackupDB() {
+  if (!backupDBPromise) {
+    backupDBPromise = new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) { reject(new Error('IndexedDB indisponible')); return; }
+      const req = indexedDB.open(BACKUP_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const idb = req.result;
+        if (!idb.objectStoreNames.contains(BACKUP_STORE)) {
+          idb.createObjectStore(BACKUP_STORE, { keyPath: 'ts' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return backupDBPromise;
+}
+
+async function saveBackupSnapshot() {
+  try {
+    const idb = await openBackupDB();
+    const tx = idb.transaction(BACKUP_STORE, 'readwrite');
+    const store = tx.objectStore(BACKUP_STORE);
+    store.put({ ts: Date.now(), data: JSON.stringify(db) });
+    const keysReq = store.getAllKeys();
+    keysReq.onsuccess = () => {
+      const keys = keysReq.result.sort((a,b) => a - b);
+      if (keys.length > BACKUP_KEEP) {
+        keys.slice(0, keys.length - BACKUP_KEEP).forEach(k => store.delete(k));
+      }
+    };
+  } catch(e) { /* IndexedDB indisponible sur cet appareil, on ignore silencieusement */ }
+}
+
+async function getLatestBackup() {
+  try {
+    const idb = await openBackupDB();
+    return await new Promise((resolve, reject) => {
+      const tx = idb.transaction(BACKUP_STORE, 'readonly');
+      const req = tx.objectStore(BACKUP_STORE).getAll();
+      req.onsuccess = () => {
+        const all = req.result || [];
+        if (!all.length) { resolve(null); return; }
+        all.sort((a,b) => b.ts - a.ts);
+        resolve(all[0]);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch(e) { return null; }
+}
+
+async function openSyncModal() {
+  openModal('modal-sync');
+  const statusEl = document.getElementById('backup-status');
+  statusEl.textContent = 'Vérification…';
+  const latest = await getLatestBackup();
+  statusEl.textContent = latest
+    ? `Dernière sauvegarde auto : ${new Date(latest.ts).toLocaleString('fr-FR')}`
+    : 'Aucune sauvegarde automatique pour l\'instant.';
+}
+
+async function restoreFromBackup() {
+  const latest = await getLatestBackup();
+  if (!latest) { showToast('Aucune sauvegarde automatique trouvée'); return; }
+  try {
+    const parsed = JSON.parse(latest.data);
+    if (!confirm(`Restaurer la sauvegarde automatique du ${new Date(latest.ts).toLocaleString('fr-FR')} ?\n\nCela remplacera toutes tes données actuelles sur cet appareil.`)) return;
+    db = parsed;
+    saveDB();
+    closeModal('modal-sync');
+    renderHome();
+    showToast('Données restaurées depuis la sauvegarde automatique !');
+  } catch(e) {
+    showToast('Sauvegarde automatique illisible.');
+  }
+}
+
 // ==================== MODALS ====================
 function openModal(id) {
   document.getElementById(id).classList.add('open');
@@ -2235,10 +2516,24 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// ==================== LANCEMENT RAPIDE (raccourci iOS) ====================
+// Un raccourci "Ouvrir l'URL" (app Raccourcis, ajouté à l'écran d'accueil) vers
+// index.html?action=start ouvre directement la modale de nouvelle séance, et
+// ?action=quicklog ouvre directement le log rapide Handball/Cardio — sans
+// naviguer manuellement dans l'appli.
+function handleQuickLaunch() {
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get('action');
+  if (action === 'start') startNewSession();
+  else if (action === 'quicklog') openQuickLog();
+}
+
 // ==================== INIT ====================
 applyTheme(localStorage.getItem('fittrack_theme') || 'dark');
 loadDB();
+loadRestPrefs();
 renderHome();
+handleQuickLaunch();
 
 // Register service worker
 if ('serviceWorker' in navigator) {
