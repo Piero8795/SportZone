@@ -141,22 +141,55 @@
     .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
 
     /* ---- HOME VIEW ---- */
-    .home-hero { padding: 60px 20px 24px; }
+    .home-hero { padding: 60px 20px 24px; position: relative; overflow: hidden; }
+    .home-hero::before {
+      content: ''; position: absolute; top: -90px; right: -70px; width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(var(--accent-rgb),0.30), transparent 70%);
+      filter: blur(6px); pointer-events: none; z-index: 0;
+      animation: heroFloat 7s ease-in-out infinite;
+    }
+    @keyframes heroFloat { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-14px,12px) scale(1.1); } }
+    .home-hero h1, .home-hero p { position: relative; z-index: 1; }
     .home-hero h1 { font-size: 32px; font-weight: 800; }
-    .home-hero h1 span { color: var(--accent); }
+    .hero-emoji { display: inline-block; animation: heroWave 2.4s ease-in-out infinite; transform-origin: 70% 70%; }
+    @keyframes heroWave { 0%,100% { transform: rotate(0deg); } 15% { transform: rotate(14deg); } 30% { transform: rotate(-8deg); } 45% { transform: rotate(14deg); } 60% { transform: rotate(0deg); } }
+    .hero-name { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .home-hero p { color: var(--text2); font-size: 15px; margin-top: 6px; }
     .streak-row { display: flex; gap: 10px; margin: 0 16px 16px; }
     .stat-pill {
       flex: 1; background: var(--bg2); border-radius: var(--radius); padding: 14px 16px;
-      border: 1px solid var(--border); text-align: center;
+      border: 1px solid var(--border); text-align: center; transition: transform 0.15s;
     }
-    .stat-pill .val { font-size: 26px; font-weight: 800; color: var(--accent); }
+    .stat-pill:active { transform: scale(0.95); }
+    .stat-pill .val { font-size: 26px; font-weight: 800; color: var(--accent); display: inline-block; }
     .stat-pill .lbl { font-size: 11px; color: var(--text2); margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .streak-pill.active-streak .val { animation: flameFlicker 1.3s ease-in-out infinite; }
+    @keyframes flameFlicker { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    .next-session-card {
+      margin: 0 16px 16px; padding: 16px; border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.16), rgba(255,107,53,0.08));
+      border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .next-session-card .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); font-weight: 700; }
+    .next-session-card .name { font-size: 16px; font-weight: 800; margin-top: 2px; }
+    .pr-banner {
+      margin: 0 16px 16px; padding: 14px 16px; border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(255,179,0,0.18), rgba(255,107,53,0.10));
+      border: 1px solid #ffb300; font-size: 14px; font-weight: 700;
+      animation: prPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes prPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .weekly-goal-card { padding: 16px; }
+    .goal-bar-track { height: 10px; border-radius: 6px; background: var(--bg3); overflow: hidden; margin-top: 2px; }
+    .goal-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; width: 0%; }
+    .goal-bar-label { font-size: 12px; color: var(--text2); margin-top: 8px; }
 
     .recent-session {
       display: flex; justify-content: space-between; align-items: center;
       padding: 12px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: opacity 0.15s;
     }
+    .recent-session:active { opacity: 0.55; }
     .recent-session:last-child { border-bottom: none; }
     .session-name { font-weight: 600; font-size: 15px; }
     .session-meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
@@ -276,7 +309,15 @@
 
     /* ---- ANIMATIONS ---- */
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .view.active > * { animation: fadeIn 0.2s ease; }
+    .view.active > * { animation: fadeIn 0.25s ease both; }
+    .view.active > *:nth-child(1) { animation-delay: 0s; }
+    .view.active > *:nth-child(2) { animation-delay: 0.03s; }
+    .view.active > *:nth-child(3) { animation-delay: 0.06s; }
+    .view.active > *:nth-child(4) { animation-delay: 0.09s; }
+    .view.active > *:nth-child(5) { animation-delay: 0.12s; }
+    .view.active > *:nth-child(6) { animation-delay: 0.15s; }
+    .view.active > *:nth-child(7) { animation-delay: 0.18s; }
+    .view.active > *:nth-child(8) { animation-delay: 0.21s; }
 
     .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -342,13 +383,25 @@
     <!-- HOME -->
     <div class="view active" id="home-view">
       <div class="home-hero">
-        <h1>Bonjour 💪<br><span id="greeting-name">Piero</span></h1>
+        <h1><span class="hero-emoji" id="greeting-emoji">💪</span> Bonjour<br><span class="hero-name" id="greeting-name">Piero</span></h1>
         <p id="home-subtitle">Prêt pour la séance ?</p>
       </div>
+      <div id="pr-banner"></div>
+      <div id="next-session-card"></div>
       <div class="streak-row">
         <div class="stat-pill"><div class="val" id="stat-total">0</div><div class="lbl">Séances</div></div>
         <div class="stat-pill"><div class="val" id="stat-week">0</div><div class="lbl">Cette semaine</div></div>
-        <div class="stat-pill"><div class="val" id="stat-streak">0</div><div class="lbl">Streak 🔥</div></div>
+        <div class="stat-pill streak-pill"><div class="val" id="stat-streak">0</div><div class="lbl" id="stat-streak-lbl">Streak</div></div>
+      </div>
+      <div class="card weekly-goal-card">
+        <div class="card-header" style="margin-bottom:2px">
+          <div class="card-title">Objectif hebdo</div>
+          <button class="btn-icon" style="background:transparent;color:var(--text2);padding:4px" onclick="editWeeklyGoal()" title="Modifier l'objectif">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar-fill"></div></div>
+        <div class="goal-bar-label" id="goal-bar-label">0 / 3 séances cette semaine</div>
       </div>
       <div class="card" style="padding:14px">
         <div class="card-title" style="margin-bottom:10px">Assiduité</div>
@@ -437,6 +490,9 @@
       <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-direction:row;padding-top:54px">
         <div><h1>Templates</h1><p>Tes séances types</p></div>
         <div style="display:flex;gap:8px">
+          <button class="btn-icon" onclick="editUserName()" title="Changer le prénom affiché">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </button>
           <button class="btn-icon" onclick="toggleTheme()" title="Thème clair / sombre">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
           </button>
@@ -977,13 +1033,21 @@ function renderHome() {
       else break;
     }
   }
-  document.getElementById('stat-total').textContent = db.sessions.length;
-  document.getElementById('stat-week').textContent = thisWeek;
-  document.getElementById('stat-streak').textContent = streak;
+  animateCountUp('stat-total', db.sessions.length);
+  animateCountUp('stat-week', thisWeek);
+  animateCountUp('stat-streak', streak);
+  const streakLbl = document.getElementById('stat-streak-lbl');
+  streakLbl.textContent = streak >= 7 ? 'Streak 🔥🔥' : streak > 0 ? 'Streak 🔥' : 'Streak';
+  document.querySelector('.streak-pill').classList.toggle('active-streak', streak > 0);
+
   const h = now.getHours();
   document.getElementById('home-subtitle').textContent = h < 12 ? 'Bonne matinée !' : h < 18 ? 'Bonne après-midi !' : 'Bonne soirée !';
+  document.getElementById('greeting-emoji').textContent = h < 12 ? '☀️' : h < 18 ? '💪' : '🌙';
 
   renderHeatmap();
+  renderNextSessionCard();
+  renderPRBanner();
+  renderWeeklyGoal(thisWeek);
 
   const list = document.getElementById('recent-sessions-list');
   const recent = [...db.sessions].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
@@ -1006,6 +1070,111 @@ function renderHome() {
       <div class="session-vol">${vol > 0 ? vol.toLocaleString('fr') + ' kg' : ''}</div>
     </div>`;
   }).join('') + '</div>';
+}
+
+// Anime un chiffre de sa valeur affichée actuelle vers une nouvelle valeur
+function animateCountUp(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const from = parseInt(el.textContent) || 0;
+  const to = value || 0;
+  if (from === to) { el.textContent = to; return; }
+  const duration = 500;
+  const start = performance.now();
+  function step(ts) {
+    const p = Math.min(1, (ts - start) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = to;
+  }
+  requestAnimationFrame(step);
+}
+
+// Carte "Prochaine séance" affichée sur l'accueil quand un programme est actif
+function renderNextSessionCard() {
+  const container = document.getElementById('next-session-card');
+  if (!container) return;
+  const program = getActiveProgram();
+  if (!program || activeSession) { container.innerHTML = ''; return; }
+  const nextId = program.templateIds[program.currentIndex];
+  const tmpl = db.templates.find(t => t.id === nextId);
+  if (!tmpl) { container.innerHTML = ''; return; }
+  container.innerHTML = `
+    <div class="next-session-card">
+      <div>
+        <div class="lbl">Prochaine séance · ${program.name}</div>
+        <div class="name">${tmpl.name}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="startNewSession()">Démarrer</button>
+    </div>`;
+}
+
+// Détecte les records de poids battus lors de la dernière séance (musculation),
+// pour un petit bandeau de félicitations sur l'accueil le jour même
+function computeNewPRsForSession(session) {
+  if (!session || session.type === 'cardio') return [];
+  const prior = db.sessions.filter(s => s.id !== session.id && new Date(s.date) < new Date(session.date));
+  const newPRs = [];
+  session.exercises.forEach(ex => {
+    const working = ex.sets.filter(st => st.done && !st.warmup);
+    if (!working.length) return;
+    const sessionMax = Math.max(...working.map(st => parseFloat(st.weight) || 0));
+    if (sessionMax <= 0) return;
+    let priorBest = 0;
+    prior.forEach(s => {
+      const pex = s.exercises.find(e => e.name === ex.name);
+      if (!pex) return;
+      pex.sets.forEach(st => { if (st.done && !st.warmup) priorBest = Math.max(priorBest, parseFloat(st.weight) || 0); });
+    });
+    // On ne compte pas la toute première fois qu'un exercice est loggé comme un "record battu"
+    if (priorBest > 0 && sessionMax > priorBest) newPRs.push({ name: ex.name, weight: sessionMax });
+  });
+  return newPRs;
+}
+
+function renderPRBanner() {
+  const banner = document.getElementById('pr-banner');
+  if (!banner) return;
+  const sorted = [...db.sessions].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const last = sorted[0];
+  if (!last || new Date(last.date).toDateString() !== new Date().toDateString()) { banner.innerHTML = ''; return; }
+  const prs = computeNewPRsForSession(last);
+  if (!prs.length) { banner.innerHTML = ''; return; }
+  const text = prs.length === 1
+    ? `🎉 Nouveau record sur ${prs[0].name} : ${prs[0].weight} kg !`
+    : `🎉 ${prs.length} nouveaux records aujourd'hui : ${prs.map(p=>p.name).join(', ')} !`;
+  banner.innerHTML = `<div class="pr-banner">${text}</div>`;
+}
+
+// ==================== OBJECTIF HEBDOMADAIRE ====================
+const WEEKLY_GOAL_DEFAULT = 3;
+
+function getWeeklyGoal() {
+  const v = parseInt(localStorage.getItem('fittrack_weekly_goal'));
+  return v > 0 ? v : WEEKLY_GOAL_DEFAULT;
+}
+
+function editWeeklyGoal() {
+  const current = getWeeklyGoal();
+  const input = prompt('Combien de séances par semaine veux-tu viser ?', current);
+  if (input === null) return;
+  const n = parseInt(input);
+  if (!n || n < 1 || n > 14) { showToast('Entre un nombre entre 1 et 14'); return; }
+  localStorage.setItem('fittrack_weekly_goal', String(n));
+  renderHome();
+}
+
+function renderWeeklyGoal(weeklyCount) {
+  const goal = getWeeklyGoal();
+  const pct = Math.min(100, Math.round((weeklyCount / goal) * 100));
+  const fill = document.getElementById('goal-bar-fill');
+  const label = document.getElementById('goal-bar-label');
+  if (!fill || !label) return;
+  fill.style.width = pct + '%';
+  label.textContent = weeklyCount >= goal
+    ? `🎉 Objectif atteint : ${weeklyCount}/${goal} séances cette semaine !`
+    : `${weeklyCount} / ${goal} séances cette semaine`;
 }
 
 // ==================== HEATMAP D'ASSIDUITÉ ====================
@@ -2549,6 +2718,25 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+// ==================== PRÉNOM AFFICHÉ ====================
+// Réglage local à cet appareil (pas lié aux données) — pratique si quelqu'un
+// d'autre (ex: la compagne de Piero) utilise l'appli sur le même téléphone/tablette.
+function applyUserName() {
+  const el = document.getElementById('greeting-name');
+  if (el) el.textContent = localStorage.getItem('fittrack_username') || 'Piero';
+}
+
+function editUserName() {
+  const current = localStorage.getItem('fittrack_username') || 'Piero';
+  const input = prompt('Quel prénom afficher sur l\'accueil ?', current);
+  if (input === null) return;
+  const name = input.trim();
+  if (!name) { showToast('Le prénom ne peut pas être vide'); return; }
+  localStorage.setItem('fittrack_username', name);
+  applyUserName();
+  showToast('Prénom mis à jour !');
+}
+
 // ==================== TOAST ====================
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -2571,6 +2759,7 @@ function handleQuickLaunch() {
 
 // ==================== INIT ====================
 applyTheme(localStorage.getItem('fittrack_theme') || 'dark');
+applyUserName();
 loadDB();
 loadRestPrefs();
 renderHome();
