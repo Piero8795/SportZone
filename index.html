@@ -351,7 +351,7 @@
     .heatmap-grid { display: inline-flex; gap: 3px; }
     .heatmap-col { display: flex; flex-direction: column; gap: 3px; }
     .heatmap-cell { width: 11px; height: 11px; border-radius: 3px; background: var(--bg3); }
-    .heatmap-cell.empty { background: transparent; }
+    .heatmap-cell.future { background: transparent; }
     .heatmap-cell.level-1 { background: rgba(var(--accent-rgb), 0.35); }
     .heatmap-cell.level-2 { background: rgba(var(--accent-rgb), 0.65); }
     .heatmap-cell.level-3 { background: rgba(var(--accent-rgb), 1); }
@@ -384,8 +384,8 @@
     .vol-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
 
     /* Notification toast */
-    #toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 600; z-index: 999; transition: transform 0.3s; white-space: nowrap; pointer-events: none; }
-    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 18px; font-size: 14px; font-weight: 600; z-index: 999; transition: transform 0.3s, opacity 0.3s, visibility 0.3s; white-space: nowrap; pointer-events: none; opacity: 0; visibility: hidden; }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; }
   </style>
 </head>
 <body>
@@ -425,7 +425,7 @@
         <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar-fill"></div></div>
         <div class="goal-bar-label" id="goal-bar-label">0 / 3 séances cette semaine</div>
       </div>
-      <div class="card" style="padding:14px">
+      <div class="card" style="padding:14px;margin-bottom:4px">
         <div class="card-title" style="margin-bottom:10px">Assiduité</div>
         <div class="heatmap-wrap"><div class="heatmap-grid" id="heatmap-grid"></div></div>
       </div>
@@ -1382,7 +1382,7 @@ function renderHeatmap() {
     let col = '';
     for (let d = 0; d < 7; d++) {
       const cur = new Date(start); cur.setDate(start.getDate() + w * 7 + d);
-      if (cur > today) { col += `<div class="heatmap-cell empty"></div>`; continue; }
+      if (cur > today) { col += `<div class="heatmap-cell future"></div>`; continue; }
       const c = countByDay[cur.toDateString()] || 0;
       const level = c === 0 ? 0 : c === 1 ? 1 : c === 2 ? 2 : 3;
       const dateLabel = cur.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
@@ -3114,11 +3114,13 @@ function editUserName() {
 }
 
 // ==================== TOAST ====================
+let toastTimer = null;
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.remove('show'); toastTimer = null; }, 2500);
 }
 
 // ==================== LANCEMENT RAPIDE (raccourci iOS) ====================
