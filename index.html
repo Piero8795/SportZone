@@ -594,7 +594,10 @@
           </div>
           <button type="button" class="mode-toggle-btn" id="tmpl-mode-btn" onclick="toggleTmplMode()">🔁 Progressif</button>
         </div>
-        <button class="btn btn-secondary btn-sm btn-full" onclick="addExerciseToTemplate()">+ Ajouter l'exercice</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm btn-full" id="tmpl-add-btn" onclick="addExerciseToTemplate()">+ Ajouter l'exercice</button>
+          <button class="btn btn-ghost btn-sm" id="tmpl-cancel-edit-btn" style="display:none" onclick="resetTmplAddForm();renderTempExerciseList()">Annuler</button>
+        </div>
       </div>
       <div id="template-exercise-list"></div>
     </div>
@@ -2156,16 +2159,27 @@ function renderTemplates() {
   }).join('');
 }
 
-function openNewTemplate() {
-  currentTemplateEdit = null;
-  tempExercises = [];
-  tmplModeFixed = false;
-  updateTmplModeBtn();
-  document.getElementById('template-name-input').value = '';
+let editingTempIndex = null;
+
+function resetTmplAddForm() {
+  editingTempIndex = null;
   document.getElementById('template-exercise-input').value = '';
   document.getElementById('tmpl-sets').value = '';
   document.getElementById('tmpl-reps').value = '';
   document.getElementById('tmpl-weight').value = '';
+  const addBtn = document.getElementById('tmpl-add-btn');
+  if (addBtn) addBtn.textContent = '+ Ajouter l\'exercice';
+  const cancelBtn = document.getElementById('tmpl-cancel-edit-btn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  tmplModeFixed = false;
+  updateTmplModeBtn();
+}
+
+function openNewTemplate() {
+  currentTemplateEdit = null;
+  tempExercises = [];
+  resetTmplAddForm();
+  document.getElementById('template-name-input').value = '';
   document.getElementById('template-modal-title').textContent = 'Nouveau template';
   renderTempExerciseList();
   const datalist = document.getElementById('exercise-suggestions-tmpl');
@@ -2183,14 +2197,9 @@ function editTemplate(id) {
       ? { name: ex, defaultSets: '', defaultReps: '', defaultWeight: '', progression: true }
       : { progression: true, ...ex }
   );
-  tmplModeFixed = false;
-  updateTmplModeBtn();
+  resetTmplAddForm();
   document.getElementById('template-name-input').value = tmpl.name;
   document.getElementById('template-modal-title').textContent = 'Modifier le template';
-  document.getElementById('template-exercise-input').value = '';
-  document.getElementById('tmpl-sets').value = '';
-  document.getElementById('tmpl-reps').value = '';
-  document.getElementById('tmpl-weight').value = '';
   renderTempExerciseList();
   openModal('modal-template');
 }
@@ -2201,12 +2210,35 @@ function addExerciseToTemplate() {
   const sets   = document.getElementById('tmpl-sets').value.trim();
   const reps   = document.getElementById('tmpl-reps').value.trim();
   const weight = document.getElementById('tmpl-weight').value.trim();
-  tempExercises.push({ name, defaultSets: sets, defaultReps: reps, defaultWeight: weight, progression: !tmplModeFixed });
-  document.getElementById('template-exercise-input').value = '';
-  document.getElementById('tmpl-sets').value = '';
-  document.getElementById('tmpl-reps').value = '';
-  document.getElementById('tmpl-weight').value = '';
+  const entry = { name, defaultSets: sets, defaultReps: reps, defaultWeight: weight, progression: !tmplModeFixed };
+  if (editingTempIndex !== null) {
+    tempExercises[editingTempIndex] = entry;
+    showToast('Exercice mis à jour !');
+  } else {
+    tempExercises.push(entry);
+  }
+  resetTmplAddForm();
   renderTempExerciseList();
+}
+
+// Charge un exercice déjà ajouté dans le formulaire du haut pour le modifier
+// entièrement (nom, séries, reps, poids, mode)
+function editTempExercise(i) {
+  const ex = tempExercises[i];
+  if (!ex) return;
+  editingTempIndex = i;
+  document.getElementById('template-exercise-input').value = ex.name;
+  document.getElementById('tmpl-sets').value = ex.defaultSets || '';
+  document.getElementById('tmpl-reps').value = ex.defaultReps || '';
+  document.getElementById('tmpl-weight').value = ex.defaultWeight || '';
+  tmplModeFixed = ex.progression === false;
+  updateTmplModeBtn();
+  const addBtn = document.getElementById('tmpl-add-btn');
+  if (addBtn) addBtn.textContent = '✓ Mettre à jour l\'exercice';
+  const cancelBtn = document.getElementById('tmpl-cancel-edit-btn');
+  if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+  document.getElementById('template-exercise-input').focus();
+  document.getElementById('template-exercise-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function renderTempExerciseList() {
@@ -2214,23 +2246,28 @@ function renderTempExerciseList() {
   if (!tempExercises.length) { el.innerHTML = ''; return; }
   el.innerHTML = `
     <div style="margin-top:4px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 40px 32px;gap:0;padding:6px 10px;background:var(--bg3)">
+      <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 40px 28px 28px;gap:0;padding:6px 10px;background:var(--bg3)">
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2)">Exercice</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">×</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">Reps</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">kg</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">Mode</span>
         <span></span>
+        <span></span>
       </div>
       ${tempExercises.map((ex, i) => {
         const isFixed = ex.progression === false;
+        const isEditing = editingTempIndex === i;
         return `
-        <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 40px 32px;gap:0;padding:8px 10px;border-top:1px solid var(--border);align-items:center">
+        <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 40px 28px 28px;gap:0;padding:8px 10px;border-top:1px solid var(--border);align-items:center;${isEditing?'background:rgba(0,230,118,0.08)':''}">
           <span style="font-size:13px;font-weight:600">${ex.name}</span>
           <span style="font-size:13px;text-align:center;color:${ex.defaultSets?'var(--text)':'var(--text2)'}">${ex.defaultSets||'–'}</span>
           <span style="font-size:13px;text-align:center;color:${ex.defaultReps?'var(--text)':'var(--text2)'}">${ex.defaultReps||'–'}</span>
           <span style="font-size:13px;text-align:center;color:${ex.defaultWeight?'var(--accent)':'var(--text2)'}">${ex.defaultWeight||'–'}</span>
           <button onclick="toggleTempExerciseMode(${i})" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;text-align:center" title="${isFixed?'Fixe (clique pour rendre progressif)':'Progressif (clique pour fixer)'}">${isFixed ? '📌' : '🔁'}</button>
+          <button onclick="editTempExercise(${i})" style="background:none;border:none;color:var(--text2);cursor:pointer;text-align:center;padding:2px" title="Modifier">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
           <button onclick="removeTempExercise(${i})" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;line-height:1;text-align:center">×</button>
         </div>`;
       }).join('')}
@@ -2239,6 +2276,10 @@ function renderTempExerciseList() {
 
 function removeTempExercise(i) {
   tempExercises.splice(i, 1);
+  if (editingTempIndex !== null) {
+    if (editingTempIndex === i) resetTmplAddForm();
+    else if (editingTempIndex > i) editingTempIndex--;
+  }
   renderTempExerciseList();
 }
 
