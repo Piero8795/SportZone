@@ -179,10 +179,22 @@
       animation: prPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
     }
     @keyframes prPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .reminder-banner {
+      margin: 0 16px 16px; padding: 14px 16px; border-radius: var(--radius);
+      background: rgba(255,59,48,0.10); border: 1px solid #ff3b30; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+    }
     .weekly-goal-card { padding: 16px; }
     .goal-bar-track { height: 10px; border-radius: 6px; background: var(--bg3); overflow: hidden; margin-top: 2px; }
     .goal-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; width: 0%; }
     .goal-bar-label { font-size: 12px; color: var(--text2); margin-top: 8px; }
+    .week-plan-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    .week-day { flex: 1; min-width: 58px; text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--bg3); }
+    .week-day.today { background: rgba(var(--accent-rgb),0.18); border: 1px solid var(--accent); }
+    .week-day.done { opacity: 0.65; }
+    .week-day .wd-dow { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; }
+    .week-day .wd-label { font-size: 11px; font-weight: 700; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .week-day .wd-sub { font-size: 9px; color: var(--text2); margin-top: 2px; }
 
     .recent-session {
       display: flex; justify-content: space-between; align-items: center;
@@ -387,7 +399,17 @@
         <p id="home-subtitle">Prêt pour la séance ?</p>
       </div>
       <div id="pr-banner"></div>
+      <div id="reminder-banner"></div>
       <div id="next-session-card"></div>
+      <div class="card" id="week-plan-card" style="display:none">
+        <div class="card-header">
+          <div class="card-title">Cette semaine</div>
+          <button class="btn-icon" style="background:transparent;color:var(--text2);padding:4px" onclick="openTrainingDaysModal()" title="Choisir mes jours d'entraînement">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        <div class="week-plan-row" id="week-plan-row"></div>
+      </div>
       <div class="streak-row">
         <div class="stat-pill"><div class="val" id="stat-total">0</div><div class="lbl">Séances</div></div>
         <div class="stat-pill"><div class="val" id="stat-week">0</div><div class="lbl">Cette semaine</div></div>
@@ -407,7 +429,10 @@
         <div class="card-title" style="margin-bottom:10px">Assiduité</div>
         <div class="heatmap-wrap"><div class="heatmap-grid" id="heatmap-grid"></div></div>
       </div>
-      <button class="btn btn-secondary btn-sm btn-full" style="margin:0 16px 16px;width:calc(100% - 32px)" onclick="openQuickLog()">🤾 Log Handball / Cardio</button>
+      <div style="display:flex;gap:10px;margin:0 16px 16px">
+        <button class="btn btn-secondary btn-sm" style="flex:1;display:none" id="home-repeat-btn" onclick="startQuickRepeat()">⚡ Répéter</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openQuickLog()">🤾 Handball / Cardio</button>
+      </div>
       <p class="section-title">Dernières séances</p>
       <div id="recent-sessions-list">
         <div class="empty" style="padding:30px 24px">
@@ -457,6 +482,11 @@
         <p>Tes records et évolutions</p>
       </div>
 
+      <div class="card" id="total-vol-card" style="display:none">
+        <div class="card-title" style="margin-bottom:12px">Volume total par semaine</div>
+        <canvas id="total-vol-chart" height="160"></canvas>
+      </div>
+
       <div class="card" id="vol-group-card" style="display:none">
         <div class="card-title" style="margin-bottom:12px">Volume cette semaine par groupe</div>
         <div id="vol-group-body"></div>
@@ -487,21 +517,23 @@
 
     <!-- TEMPLATES -->
     <div class="view" id="templates-view">
-      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-direction:row;padding-top:54px">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-direction:row;padding-top:54px;padding-bottom:6px">
         <div><h1>Templates</h1><p>Tes séances types</p></div>
         <div style="display:flex;gap:8px">
-          <button class="btn-icon" onclick="editUserName()" title="Changer le prénom affiché">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-          </button>
-          <button class="btn-icon" onclick="toggleTheme()" title="Thème clair / sombre">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-          </button>
           <button class="btn btn-ghost btn-sm" onclick="openSyncModal()" title="Transférer mes données">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
             Sync
           </button>
           <button class="btn btn-primary btn-sm" onclick="openNewTemplate()">+ Nouveau</button>
         </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin:0 20px 18px">
+        <button class="btn-icon" onclick="editUserName()" title="Changer le prénom affiché">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </button>
+        <button class="btn-icon" onclick="toggleTheme()" title="Thème clair / sombre">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
       </div>
 
       <div class="card" id="program-card" style="display:none">
@@ -565,9 +597,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">Partir d'un template (optionnel)</label>
-        <select class="form-input" id="template-select">
+        <select class="form-input" id="template-select" onchange="updateTemplateVolumeEstimate()">
           <option value="">Séance libre</option>
         </select>
+        <div id="template-volume-estimate" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
       </div>
       <button class="btn btn-secondary btn-sm btn-full" id="repeat-free-btn" style="display:none;margin-bottom:14px" onclick="startQuickRepeat()">⚡ Répéter la dernière séance libre</button>
       <div class="form-group" style="margin-bottom:0">
@@ -787,6 +820,26 @@
   </div>
 </div>
 
+<!-- MODAL: Jours d'entraînement -->
+<div class="modal-overlay" id="modal-training-days">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Jours d'entraînement habituels</h3>
+      <button class="btn-icon" onclick="closeModal('modal-training-days')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5">Sélectionne les jours où tu t'entraînes généralement — ça sert uniquement à prévoir la carte "Cette semaine" sur l'accueil quand un programme est actif. Tu peux t'entraîner un autre jour sans problème, ce n'est qu'une prévision.</p>
+      <div class="tag-list" id="training-days-picker"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-full" onclick="saveTrainingDays()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Export/Import -->
 <div class="modal-overlay" id="modal-sync">
   <div class="modal">
@@ -823,6 +876,14 @@
         <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Une copie de tes données est enregistrée automatiquement sur cet appareil à chaque séance, en plus du stockage habituel — utile si le navigateur efface ses données.</p>
         <p style="font-size:12px;color:var(--text2);margin-bottom:10px" id="backup-status">Vérification…</p>
         <button class="btn btn-ghost btn-full" onclick="restoreFromBackup()">Restaurer la dernière sauvegarde auto</button>
+      </div>
+
+      <div class="divider" style="margin:20px 0"></div>
+
+      <div>
+        <p class="form-label" style="margin-bottom:8px">④ Export CSV (Excel / Sheets)</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Un fichier détaillé de toutes tes séances (date, exercice, série, poids, reps) à ouvrir dans un tableur.</p>
+        <button class="btn btn-ghost btn-full" onclick="exportCSV()">Exporter en CSV</button>
       </div>
     </div>
   </div>
@@ -1047,7 +1108,12 @@ function renderHome() {
   renderHeatmap();
   renderNextSessionCard();
   renderPRBanner();
+  renderReminderBanner();
+  renderWeekPlan();
   renderWeeklyGoal(thisWeek);
+
+  const repeatBtn = document.getElementById('home-repeat-btn');
+  if (repeatBtn) repeatBtn.style.display = (!activeSession && findLastFreeSession()) ? 'block' : 'none';
 
   const list = document.getElementById('recent-sessions-list');
   const recent = [...db.sessions].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
@@ -1177,6 +1243,122 @@ function renderWeeklyGoal(weeklyCount) {
     : `${weeklyCount} / ${goal} séances cette semaine`;
 }
 
+// ==================== RAPPEL SI PAS DE SÉANCE DEPUIS X JOURS ====================
+// Purement local : affiché quand on rouvre l'appli après une pause, pas de
+// vraie notification push (non fiable sur PWA iOS sans backend).
+function getReminderThreshold() {
+  const v = parseInt(localStorage.getItem('fittrack_reminder_days'));
+  return v > 0 ? v : 3;
+}
+
+function editReminderThreshold() {
+  const current = getReminderThreshold();
+  const input = prompt('Après combien de jours sans séance veux-tu un rappel ?', current);
+  if (input === null) return;
+  const n = parseInt(input);
+  if (!n || n < 1 || n > 30) { showToast('Entre un nombre entre 1 et 30'); return; }
+  localStorage.setItem('fittrack_reminder_days', String(n));
+  renderHome();
+  showToast('Rappel mis à jour !');
+}
+
+function renderReminderBanner() {
+  const el = document.getElementById('reminder-banner');
+  if (!el) return;
+  if (!db.sessions.length) { el.innerHTML = ''; return; }
+  const sorted = [...db.sessions].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const lastDate = new Date(sorted[0].date); lastDate.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysSince = Math.round((today - lastDate) / 86400000);
+  if (daysSince < getReminderThreshold()) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="reminder-banner" onclick="editReminderThreshold()">⏰ Ça fait ${daysSince} jours que tu n'as pas loggé de séance — direction la salle ? 💪</div>`;
+}
+
+// ==================== JOURS D'ENTRAÎNEMENT & PRÉVISION DE LA SEMAINE ====================
+const WEEKDAY_NAMES = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+let tempTrainingDays = [];
+
+function getTrainingDays() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('fittrack_training_days'));
+    if (Array.isArray(raw)) return raw;
+  } catch(e) {}
+  return [0,1,2,3,4]; // par défaut : lundi à vendredi
+}
+
+function openTrainingDaysModal() {
+  tempTrainingDays = getTrainingDays().slice();
+  renderTrainingDaysPicker();
+  openModal('modal-training-days');
+}
+
+function renderTrainingDaysPicker() {
+  const el = document.getElementById('training-days-picker');
+  el.innerHTML = WEEKDAY_NAMES.map((name, i) => {
+    const active = tempTrainingDays.includes(i);
+    return `<div class="tag" style="cursor:pointer;${active?'background:var(--accent);color:#000;font-weight:700':''}" onclick="toggleTrainingDay(${i})">${name}</div>`;
+  }).join('');
+}
+
+function toggleTrainingDay(i) {
+  const idx = tempTrainingDays.indexOf(i);
+  if (idx > -1) tempTrainingDays.splice(idx, 1);
+  else tempTrainingDays.push(i);
+  renderTrainingDaysPicker();
+}
+
+function saveTrainingDays() {
+  localStorage.setItem('fittrack_training_days', JSON.stringify(tempTrainingDays));
+  closeModal('modal-training-days');
+  renderHome();
+  showToast('Jours d\'entraînement mis à jour !');
+}
+
+// Prévision des 7 prochains jours à partir du programme actif et des jours
+// d'entraînement choisis — purement indicatif, ça ne bloque rien si tu changes
+// de jour, ça se recalera automatiquement à la prochaine séance loggée.
+function renderWeekPlan() {
+  const card = document.getElementById('week-plan-card');
+  const row = document.getElementById('week-plan-row');
+  if (!card || !row) return;
+  const program = getActiveProgram();
+  if (!program) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const trainingDays = getTrainingDays();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const sessionDates = new Set(db.sessions.map(s => new Date(s.date).toDateString()));
+
+  let runningIndex = program.currentIndex;
+  const cells = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    const dow = (d.getDay() + 6) % 7; // 0 = lundi
+    const doneToday = sessionDates.has(d.toDateString());
+    let label, sub, cls;
+    if (doneToday) {
+      label = '✅'; sub = 'Fait'; cls = 'done';
+    } else if (trainingDays.includes(dow)) {
+      const tmplId = program.templateIds[runningIndex % program.templateIds.length];
+      const tmpl = db.templates.find(t => t.id === tmplId);
+      label = tmpl ? tmpl.name : '?';
+      sub = 'Prévu';
+      cls = i === 0 ? 'today' : '';
+      runningIndex++;
+    } else {
+      label = '—'; sub = 'Repos'; cls = 'rest';
+    }
+    cells.push({ dow: WEEKDAY_NAMES[dow], label, sub, cls });
+  }
+
+  row.innerHTML = cells.map(c => `
+    <div class="week-day ${c.cls}">
+      <div class="wd-dow">${c.dow}</div>
+      <div class="wd-label" title="${c.label}">${c.label}</div>
+      <div class="wd-sub">${c.sub}</div>
+    </div>`).join('');
+}
+
 // ==================== HEATMAP D'ASSIDUITÉ ====================
 function renderHeatmap() {
   const el = document.getElementById('heatmap-grid');
@@ -1261,6 +1443,11 @@ function findLastFreeSession() {
 // dernière séance libre (mêmes poids/reps proposés, sans recalcul de suggestion)
 // pour ne pas tout retaper, sets remis à "non faits"
 function startQuickRepeat() {
+  if (activeSession) {
+    navigate('session');
+    showToast('Termine ta séance en cours avant d\'en démarrer une nouvelle');
+    return;
+  }
   const last = findLastFreeSession();
   if (!last) return;
   activeSession = {
@@ -1293,6 +1480,17 @@ function populateTemplateSelect() {
     const nextId = program.templateIds[program.currentIndex];
     if (db.templates.some(t => t.id === nextId)) sel.value = nextId;
   }
+  updateTemplateVolumeEstimate();
+}
+
+function updateTemplateVolumeEstimate() {
+  const el = document.getElementById('template-volume-estimate');
+  if (!el) return;
+  const tmplId = document.getElementById('template-select').value;
+  const tmpl = tmplId ? db.templates.find(t => t.id === tmplId) : null;
+  if (!tmpl) { el.textContent = ''; return; }
+  const vol = estimateTemplateVolume(tmpl);
+  el.textContent = vol > 0 ? `≈ ${Math.round(vol).toLocaleString('fr')} kg de volume estimé` : '';
 }
 
 // Retrouve les N dernières séances (séries réellement "faites") pour un exercice
@@ -1400,6 +1598,31 @@ function buildSetsFromTemplate(ex, history) {
     }
   }
   return Array.from({length: count}, () => ({ weight: defWeight, reps: defReps || '10', done: false }));
+}
+
+// Synchronise les valeurs par défaut du template (séries/reps/poids) avec la
+// progression réelle en cours, une fois la séance enregistrée dans db.sessions.
+// Ne concerne que les exercices en mode "Progressif" : les exercices en mode
+// "Fixe" gardent toujours leurs valeurs d'origine, c'est tout leur intérêt.
+// On recalcule exactement de la même façon que buildSetsFromTemplate (même
+// historique, même suggestNextTarget) pour que le template affiché reflète
+// précisément ce qui sera proposé au prochain lancement.
+function syncTemplateWithSession(session) {
+  if (!session.templateId) return;
+  const tmpl = db.templates.find(t => t.id === session.templateId);
+  if (!tmpl) return;
+  session.exercises.forEach(ex => {
+    if (ex.progression === false) return;
+    const tmplEx = tmpl.exercises.find(e => typeof e === 'object' && e.name === ex.name);
+    if (!tmplEx || tmplEx.progression === false) return;
+    const history = getExerciseHistory(ex.name, 2).map(workingSetsOf);
+    const suggestion = suggestNextTarget(history);
+    if (!suggestion) return;
+    const setCount = (history[0] && history[0].length) || parseInt(tmplEx.defaultSets) || 1;
+    tmplEx.defaultSets = setCount;
+    tmplEx.defaultWeight = String(suggestion.weight);
+    tmplEx.defaultReps = String(suggestion.reps);
+  });
 }
 
 function confirmStartSession() {
@@ -1725,6 +1948,7 @@ function saveSession() {
   activeSession.duration = timerStart ? Math.floor((Date.now() - timerStart) / 1000) : 0;
 
   db.sessions.push(activeSession);
+  syncTemplateWithSession(activeSession);
   saveDB();
   saveBackupSnapshot();
   stopTimer();
@@ -2014,6 +2238,7 @@ function renderProgress() {
   sel.innerHTML = '<option value="">-- Choisir un exercice --</option>' +
     allExercises.map(n => `<option value="${n}" ${n===currentVal?'selected':''}>${n}</option>`).join('');
 
+  renderTotalVolumeChart();
   renderVolumeByGroup();
   renderBodyweightSection();
 
@@ -2021,6 +2246,63 @@ function renderProgress() {
   renderPRGrid(allExercises);
 
   if (currentVal) renderProgressChart();
+}
+
+// ==================== VOLUME TOTAL PAR SEMAINE (toutes séances) ====================
+let totalVolChart = null;
+
+function renderTotalVolumeChart() {
+  const card = document.getElementById('total-vol-card');
+  const strengthSessions = db.sessions.filter(s => s.type !== 'cardio');
+  if (!strengthSessions.length) { card.style.display = 'none'; return; }
+
+  // Regroupe le volume par semaine (lundi comme premier jour)
+  const weekKey = (d) => {
+    const date = new Date(d);
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    monday.setHours(0,0,0,0);
+    return monday.getTime();
+  };
+  const volByWeek = {};
+  strengthSessions.forEach(s => {
+    const key = weekKey(s.date);
+    volByWeek[key] = (volByWeek[key] || 0) + calcVolume(s);
+  });
+
+  const weeks = Object.keys(volByWeek).map(Number).sort((a,b) => a-b).slice(-12); // 12 dernières semaines avec activité
+  if (!weeks.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const labels = weeks.map(w => new Date(w).toLocaleDateString('fr-FR', {day:'numeric', month:'short'}));
+  const data = weeks.map(w => Math.round(volByWeek[w]));
+
+  if (totalVolChart) totalVolChart.destroy();
+  const ctx = document.getElementById('total-vol-chart').getContext('2d');
+  totalVolChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Volume (kg)',
+        data,
+        backgroundColor: 'rgba(0,230,118,0.55)',
+        borderRadius: 6,
+        maxBarThickness: 28
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString('fr') + ' kg' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } },
+        y: { grid: { color: '#2a2a2a' }, ticks: { color: '#888', font: { size: 11 }, callback: v => v >= 1000 ? (v/1000)+'k' : v } }
+      }
+    }
+  });
 }
 
 // ==================== VOLUME HEBDO PAR GROUPE MUSCULAIRE ====================
@@ -2297,7 +2579,7 @@ function renderTemplates() {
     list.innerHTML = '<div class="empty"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><h3>Pas encore de template</h3><p>Crée un template pour réutiliser tes séances rapidement.</p></div>';
     return;
   }
-  list.innerHTML = db.templates.map(t => {
+  list.innerHTML = db.templates.map((t, i) => {
     const exLines = t.exercises.map(ex => {
       const isObj = typeof ex === 'object';
       const name = isObj ? ex.name : ex;
@@ -2310,22 +2592,70 @@ function renderTemplates() {
         ${details ? `<span style="font-size:12px;color:var(--accent)">${details}</span>` : ''}
       </div>`;
     }).join('');
+    const estVol = estimateTemplateVolume(t);
     return `
     <div class="card" style="margin-bottom:12px">
       <div class="card-header">
-        <div class="session-name">${t.name}</div>
-        <div class="template-actions">
-          <button class="btn-icon" onclick="editTemplate('${t.id}')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <div class="session-name" style="flex:1;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</div>
+        <div class="template-actions" style="flex-shrink:0">
+          <button class="btn-icon" style="background:transparent;border:none;color:var(--text2);padding:6px" onclick="moveTemplate(${i},-1)" ${i===0?'disabled':''} title="Monter">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
           </button>
-          <button class="btn-icon" style="color:#ff3b30" onclick="deleteTemplate('${t.id}')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          <button class="btn-icon" style="background:transparent;border:none;color:var(--text2);padding:6px" onclick="moveTemplate(${i},1)" ${i===db.templates.length-1?'disabled':''} title="Descendre">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 19 19 12"/></svg>
+          </button>
+          <button class="btn-icon" style="background:transparent;border:none;color:var(--text2);padding:6px" onclick="duplicateTemplate('${t.id}')" title="Dupliquer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </button>
+          <button class="btn-icon" style="background:transparent;border:none;color:var(--text2);padding:6px" onclick="editTemplate('${t.id}')" title="Modifier">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon" style="background:transparent;border:none;color:#ff3b30;padding:6px" onclick="deleteTemplate('${t.id}')" title="Supprimer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           </button>
         </div>
       </div>
       <div>${exLines}</div>
+      ${estVol > 0 ? `<div style="font-size:12px;color:var(--text2);margin-top:8px">≈ ${Math.round(estVol).toLocaleString('fr')} kg de volume estimé</div>` : ''}
     </div>`;
   }).join('');
+}
+
+// Volume total estimé d'un template (séries × reps × poids par défaut, cumulé)
+function estimateTemplateVolume(tmpl) {
+  let vol = 0;
+  (tmpl.exercises || []).forEach(ex => {
+    if (typeof ex !== 'object') return;
+    const sets = parseInt(ex.defaultSets) || 0;
+    const reps = parseInt(ex.defaultReps) || 0;
+    const weight = parseFloat(ex.defaultWeight) || 0;
+    vol += sets * reps * weight;
+  });
+  return vol;
+}
+
+function moveTemplate(index, dir) {
+  const arr = db.templates;
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= arr.length) return;
+  [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+  saveDB();
+  renderTemplates();
+}
+
+function duplicateTemplate(id) {
+  const tmpl = db.templates.find(t => t.id === id);
+  if (!tmpl) return;
+  const copy = {
+    id: Date.now().toString(),
+    name: tmpl.name + ' (copie)',
+    exercises: tmpl.exercises.map(ex => typeof ex === 'object' ? {...ex} : ex)
+  };
+  const idx = db.templates.indexOf(tmpl);
+  db.templates.splice(idx + 1, 0, copy);
+  saveDB();
+  renderTemplates();
+  showToast('Template dupliqué !');
 }
 
 let editingTempIndex = null;
@@ -2601,6 +2931,52 @@ function importData() {
   } catch(e) {
     showToast('Code invalide, réessaie.');
   }
+}
+
+// ==================== EXPORT CSV ====================
+function exportCSV() {
+  if (!db.sessions.length) { showToast('Aucune séance à exporter'); return; }
+  const rows = [['Date','Type','Séance','Exercice','Série','Poids (kg)','Reps','Échauffement','Faite','Durée (min)','Intensité']];
+  [...db.sessions].sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(s => {
+    const dateStr = new Date(s.date).toLocaleDateString('fr-FR');
+    if (s.type === 'cardio') {
+      rows.push([dateStr, 'Cardio', s.name, s.sportType || '', '', '', '', '', '', s.duration ? Math.round(s.duration/60) : '', s.intensity || '']);
+      return;
+    }
+    s.exercises.forEach(ex => {
+      ex.sets.forEach((st, i) => {
+        if (!st.weight && !st.reps) return;
+        rows.push([dateStr, 'Musculation', s.name, ex.name, i+1, st.weight || '', st.reps || '', st.warmup ? 'Oui' : 'Non', st.done ? 'Oui' : 'Non', '', '']);
+      });
+    });
+  });
+  const csv = rows.map(r => r.map(v => {
+    const str = String(v === undefined || v === null ? '' : v);
+    return /[;\n"]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  }).join(';')).join('\n');
+
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const filename = `sportzone-export-${new Date().toISOString().slice(0,10)}.csv`;
+
+  try {
+    const file = new File([blob], filename, { type: 'text/csv' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'Export SportZone' }).catch(() => downloadBlob(blob, filename));
+      return;
+    }
+  } catch(e) { /* Web Share API indisponible, on retombe sur le téléchargement */ }
+  downloadBlob(blob, filename);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 // ==================== SAUVEGARDE AUTOMATIQUE (IndexedDB) ====================
