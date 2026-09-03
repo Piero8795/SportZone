@@ -298,6 +298,15 @@
     .exercise-block.superset .exercise-header { border-left: 3px solid var(--accent2); }
     .superset-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--accent2); background: rgba(255,107,53,0.15); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: middle; }
 
+    /* Séance de confirmation (14 reps atteintes, avant passage à +2kg) */
+    .exercise-block.confirm-round .exercise-header,
+    .exercise-block.confirm-round .sets-table { border-color: #ffb300; }
+    .exercise-block.confirm-round .exercise-header { border-left: 3px solid #ffb300; background: rgba(255,179,0,0.08); }
+    .confirm-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #ffb300; background: rgba(255,179,0,0.18); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: middle; }
+    .fixed-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--text2); background: var(--bg3); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: middle; }
+    .mode-toggle-btn { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer; }
+    .mode-toggle-btn.fixed { background: rgba(136,136,136,0.15); color: var(--text); border-color: var(--text2); }
+
     /* Volume par groupe musculaire */
     .vol-bar-row { margin-bottom: 10px; }
     .vol-bar-row:last-child { margin-bottom: 0; }
@@ -554,6 +563,13 @@
             <label class="form-label">Poids (kg)</label>
             <input class="form-input" id="tmpl-weight" type="number" inputmode="decimal" placeholder="0" min="0">
           </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:10px">
+          <div style="padding-right:10px">
+            <div style="font-size:13px;font-weight:600">Mode de progression</div>
+            <div style="font-size:11px;color:var(--text2)" id="tmpl-mode-desc">Progressif : reps 10→14 puis +2 kg</div>
+          </div>
+          <button type="button" class="mode-toggle-btn" id="tmpl-mode-btn" onclick="toggleTmplMode()">🔁 Progressif</button>
         </div>
         <button class="btn btn-secondary btn-sm btn-full" onclick="addExerciseToTemplate()">+ Ajouter l'exercice</button>
       </div>
@@ -1031,42 +1047,68 @@ function populateTemplateSelect() {
   }
 }
 
-// Retrouve les sets de la dernière séance pour un exercice donné
-function getLastExerciseData(exerciseName) {
+// Retrouve les N dernières séances (séries réellement "faites") pour un exercice
+// donné, la plus récente en premier
+function getExerciseHistory(exerciseName, limit) {
   const sessions = [...db.sessions].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const result = [];
   for (const s of sessions) {
     const ex = s.exercises.find(e => e.name === exerciseName);
-    if (ex) {
-      // Ne garde que les séries réellement cochées "faites" (ignore les entrées
-      // pré-remplies jamais validées, ex: reste de l'ancien auto-ajout de série)
-      const done = ex.sets.filter(st => st.done && (st.weight || st.reps));
-      if (done.length) return done;
+    if (!ex) continue;
+    // Ne garde que les séries réellement cochées "faites" (ignore les entrées
+    // pré-remplies jamais validées, ex: reste de l'ancien auto-ajout de série)
+    const done = ex.sets.filter(st => st.done && (st.weight || st.reps));
+    if (done.length) {
+      result.push(done);
+      if (result.length >= limit) break;
     }
   }
-  return null;
+  return result;
 }
 
-// Progression suggérée : les reps montent de 1 à chaque séance (10→11→12→13→14),
-// puis au palier suivant le poids augmente de 2 kg et les reps repartent à 12.
-function suggestNextTarget(workingSets) {
-  if (!workingSets || !workingSets.length) return null;
-  const counts = {};
-  workingSets.forEach(s => {
-    const key = (s.weight||'') + '|' + (s.reps||'');
-    counts[key] = (counts[key]||0) + 1;
-  });
-  let bestKey = null, bestCount = 0;
-  Object.entries(counts).forEach(([k,c]) => { if (c > bestCount) { bestCount = c; bestKey = k; } });
-  if (!bestKey) return null;
-  const [wStr, rStr] = bestKey.split('|');
-  const weight = parseFloat(wStr) || 0;
-  const reps = parseInt(rStr) || 0;
-  if (!reps) return null;
-  if (reps >= 14) {
-    const newWeight = weight > 0 ? Number((weight + 2).toFixed(2)) : weight;
-    return { weight: newWeight, reps: 10 };
+// Retrouve les sets de la dernière séance pour un exercice donné
+function getLastExerciseData(exerciseName) {
+  return getExerciseHistory(exerciseName, 1)[0] || null;
+}
+
+// Progression suggérée : les reps montent de 1 à chaque séance (10→11→12→13→14).
+// Une fois 14 reps atteintes, l'exercice est reproposé une seconde fois au même
+// poids à 14 reps (séance de confirmation, mise en évidence dans l'UI) — ce n'est
+// qu'une fois ces 14 reps confirmées deux séances de suite que le poids monte de
+// 2 kg et que les reps repartent à 10.
+function suggestNextTarget(history) {
+  // history = [dernière séance, avant-dernière séance] (séries de travail déjà
+  // filtrées hors échauffement), la plus récente en premier
+  const modeOf = (sets) => {
+    if (!sets || !sets.length) return null;
+    const counts = {};
+    sets.forEach(s => {
+      const key = (s.weight||'') + '|' + (s.reps||'');
+      counts[key] = (counts[key]||0) + 1;
+    });
+    let bestKey = null, bestCount = 0;
+    Object.entries(counts).forEach(([k,c]) => { if (c > bestCount) { bestCount = c; bestKey = k; } });
+    if (!bestKey) return null;
+    const [wStr, rStr] = bestKey.split('|');
+    const weight = parseFloat(wStr) || 0;
+    const reps = parseInt(rStr) || 0;
+    return reps ? { weight, reps } : null;
+  };
+
+  const last = history && history.length ? modeOf(history[0]) : null;
+  if (!last) return null;
+
+  if (last.reps >= 14) {
+    const prev = history[1] ? modeOf(history[1]) : null;
+    const confirmedTwice = prev && prev.reps >= 14 && prev.weight === last.weight;
+    if (confirmedTwice) {
+      const newWeight = last.weight > 0 ? Number((last.weight + 2).toFixed(2)) : last.weight;
+      return { weight: newWeight, reps: 10, confirming: false };
+    }
+    // Première fois à 14 reps à ce poids : on repropose la même charge pour confirmer
+    return { weight: last.weight, reps: 14, confirming: true };
   }
-  return { weight, reps: reps + 1 };
+  return { weight: last.weight, reps: last.reps + 1, confirming: false };
 }
 
 // Ne garde que les séries de travail (hors échauffement) — sets vient déjà
@@ -1075,18 +1117,23 @@ function workingSetsOf(sets) {
   return sets ? sets.filter(s => !s.warmup) : null;
 }
 
-function buildSetsFromTemplate(ex, lastSets) {
-  // ex = {name, defaultSets, defaultReps, defaultWeight} or string (compat)
+function buildSetsFromTemplate(ex, history) {
+  // ex = {name, defaultSets, defaultReps, defaultWeight, progression} or string (compat)
+  // history = [dernière séance, avant-dernière séance] (séries "faites"), plus récente en premier
   const isObj = typeof ex === 'object';
   const count = isObj && ex.defaultSets ? parseInt(ex.defaultSets) : 1;
   const defWeight = isObj ? (ex.defaultWeight || '') : '';
   const defReps   = isObj ? (ex.defaultReps || '')   : '';
+  // Mode "Fixe" : on garde toujours les valeurs de base du template, jamais de suggestion
+  const isFixed = isObj && ex.progression === false;
 
-  const validLast = workingSetsOf(lastSets);
-  const suggestion = suggestNextTarget(validLast);
-  if (suggestion) {
-    const setCount = validLast.length || count;
-    return Array.from({length: setCount}, () => ({ weight: String(suggestion.weight), reps: String(suggestion.reps), done: false }));
+  if (!isFixed) {
+    const workHistory = (history || []).map(workingSetsOf);
+    const suggestion = suggestNextTarget(workHistory);
+    if (suggestion) {
+      const setCount = (workHistory[0] && workHistory[0].length) || count;
+      return Array.from({length: setCount}, () => ({ weight: String(suggestion.weight), reps: String(suggestion.reps), done: false }));
+    }
   }
   return Array.from({length: count}, () => ({ weight: defWeight, reps: defReps || '10', done: false }));
 }
@@ -1108,10 +1155,12 @@ function confirmStartSession() {
   if (tmpl) {
     tmpl.exercises.forEach(ex => {
       const exName = typeof ex === 'object' ? ex.name : ex;
-      const lastSets = getLastExerciseData(exName);
+      const isFixed = typeof ex === 'object' && ex.progression === false;
+      const history = getExerciseHistory(exName, 2);
       activeSession.exercises.push({
         name: exName,
-        sets: buildSetsFromTemplate(ex, lastSets)
+        progression: !isFixed,
+        sets: buildSetsFromTemplate(ex, history)
       });
     });
   }
@@ -1137,22 +1186,29 @@ function renderExercises() {
     return;
   }
   container.innerHTML = activeSession.exercises.map((ex, ei) => {
-    // Cherche les données de la séance précédente pour l'affichage "Dernière fois"
-    const lastSets = getLastExerciseData(ex.name);
-    const validLast = workingSetsOf(lastSets);
+    // Cherche les données des 2 dernières séances pour l'affichage "Dernière fois"
+    // et pour savoir si on est sur une séance de confirmation à 14 reps
+    const history = getExerciseHistory(ex.name, 2);
+    const validLast = workingSetsOf(history[0]);
     const lastHint = validLast && validLast.length
       ? validLast.map((s, i) => `S${i+1}: ${s.weight||'–'} kg × ${s.reps||'–'}`).join(' &nbsp;·&nbsp; ')
       : null;
-    const suggestion = suggestNextTarget(validLast);
-    const suggestionHint = suggestion ? `Objectif : ${suggestion.weight || '–'} kg × ${suggestion.reps}` : null;
+    const isFixed = ex.progression === false;
+    const suggestion = isFixed ? null : suggestNextTarget(history.map(workingSetsOf));
+    const isConfirmRound = !!(suggestion && suggestion.confirming);
+    const suggestionHint = suggestion
+      ? (isConfirmRound
+          ? `🔒 Confirme ces ${suggestion.reps} reps à ${suggestion.weight || '–'} kg → +2 kg la prochaine fois`
+          : `Objectif : ${suggestion.weight || '–'} kg × ${suggestion.reps}`)
+      : null;
 
     return `
-    <div class="exercise-block ${ex.supersetId?'superset':''}">
+    <div class="exercise-block ${ex.supersetId?'superset':''} ${isConfirmRound?'confirm-round':''}">
       <div class="exercise-header">
         <div>
-          <span class="exercise-name">${ex.name}</span>${ex.supersetId ? '<span class="superset-badge">🔗 Superset</span>' : ''}
+          <span class="exercise-name">${ex.name}</span>${ex.supersetId ? '<span class="superset-badge">🔗 Superset</span>' : ''}${isFixed ? '<span class="fixed-badge">📌 Fixe</span>' : ''}${isConfirmRound ? '<span class="confirm-badge">🔒 Confirmation</span>' : ''}
           ${lastHint ? `<div style="font-size:11px;color:var(--text2);margin-top:3px">Dernière fois : ${lastHint}</div>` : ''}
-          ${suggestionHint ? `<div style="font-size:11px;color:var(--accent);margin-top:2px;font-weight:600">${suggestionHint}</div>` : ''}
+          ${suggestionHint ? `<div style="font-size:11px;color:${isConfirmRound?'#ffb300':'var(--accent)'};margin-top:2px;font-weight:600">${suggestionHint}</div>` : ''}
         </div>
         <div style="display:flex;gap:2px;align-items:center">
           <button class="btn-icon" style="background:transparent;border:none;color:${ex.supersetId?'var(--accent2)':'var(--text2)'};padding:6px" onclick="openSupersetPicker(${ei})" title="${ex.supersetId?'Dissocier le superset':'Associer en superset'}">
@@ -1310,7 +1366,7 @@ function openAddExercise() {
 function addExerciseToSession() {
   const name = document.getElementById('exercise-name-input').value.trim();
   if (!name) return;
-  const suggestion = suggestNextTarget(workingSetsOf(getLastExerciseData(name)));
+  const suggestion = suggestNextTarget(getExerciseHistory(name, 2).map(workingSetsOf));
   const initialSet = suggestion
     ? { weight: String(suggestion.weight), reps: String(suggestion.reps), done: false }
     : { weight: '', reps: '10', done: false };
@@ -1840,6 +1896,32 @@ function renderProgressChart() {
 
 // ==================== TEMPLATES ====================
 let tempExercises = [];
+let tmplModeFixed = false; // mode choisi pour le PROCHAIN exercice ajouté au template
+
+function toggleTmplMode() {
+  tmplModeFixed = !tmplModeFixed;
+  updateTmplModeBtn();
+}
+
+function updateTmplModeBtn() {
+  const btn = document.getElementById('tmpl-mode-btn');
+  const desc = document.getElementById('tmpl-mode-desc');
+  if (!btn) return;
+  if (tmplModeFixed) {
+    btn.textContent = '📌 Fixe';
+    btn.classList.add('fixed');
+    desc.textContent = 'Fixe : mêmes séries/reps/poids à chaque séance, aucune évolution';
+  } else {
+    btn.textContent = '🔁 Progressif';
+    btn.classList.remove('fixed');
+    desc.textContent = 'Progressif : reps 10→14 puis +2 kg';
+  }
+}
+
+function toggleTempExerciseMode(i) {
+  tempExercises[i].progression = tempExercises[i].progression === false ? true : false;
+  renderTempExerciseList();
+}
 
 function renderTemplates() {
   renderProgramCard();
@@ -1855,8 +1937,9 @@ function renderTemplates() {
       const details = isObj
         ? [ex.defaultSets ? ex.defaultSets+'×' : '', ex.defaultReps ? ex.defaultReps+' reps' : '', ex.defaultWeight ? ex.defaultWeight+' kg' : ''].filter(Boolean).join(' ')
         : '';
+      const isFixed = isObj && ex.progression === false;
       return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px">${name}</span>
+        <span style="font-size:13px">${name}${isFixed ? '<span class="fixed-badge">📌 Fixe</span>' : ''}</span>
         ${details ? `<span style="font-size:12px;color:var(--accent)">${details}</span>` : ''}
       </div>`;
     }).join('');
@@ -1881,6 +1964,8 @@ function renderTemplates() {
 function openNewTemplate() {
   currentTemplateEdit = null;
   tempExercises = [];
+  tmplModeFixed = false;
+  updateTmplModeBtn();
   document.getElementById('template-name-input').value = '';
   document.getElementById('template-exercise-input').value = '';
   document.getElementById('tmpl-sets').value = '';
@@ -1897,10 +1982,14 @@ function editTemplate(id) {
   const tmpl = db.templates.find(t=>t.id===id);
   if (!tmpl) return;
   currentTemplateEdit = id;
-  // Normalise les anciens formats (string → objet)
+  // Normalise les anciens formats (string → objet), progression = true par défaut
   tempExercises = tmpl.exercises.map(ex =>
-    typeof ex === 'string' ? { name: ex, defaultSets: '', defaultReps: '', defaultWeight: '' } : {...ex}
+    typeof ex === 'string'
+      ? { name: ex, defaultSets: '', defaultReps: '', defaultWeight: '', progression: true }
+      : { progression: true, ...ex }
   );
+  tmplModeFixed = false;
+  updateTmplModeBtn();
   document.getElementById('template-name-input').value = tmpl.name;
   document.getElementById('template-modal-title').textContent = 'Modifier le template';
   document.getElementById('template-exercise-input').value = '';
@@ -1917,7 +2006,7 @@ function addExerciseToTemplate() {
   const sets   = document.getElementById('tmpl-sets').value.trim();
   const reps   = document.getElementById('tmpl-reps').value.trim();
   const weight = document.getElementById('tmpl-weight').value.trim();
-  tempExercises.push({ name, defaultSets: sets, defaultReps: reps, defaultWeight: weight });
+  tempExercises.push({ name, defaultSets: sets, defaultReps: reps, defaultWeight: weight, progression: !tmplModeFixed });
   document.getElementById('template-exercise-input').value = '';
   document.getElementById('tmpl-sets').value = '';
   document.getElementById('tmpl-reps').value = '';
@@ -1930,22 +2019,26 @@ function renderTempExerciseList() {
   if (!tempExercises.length) { el.innerHTML = ''; return; }
   el.innerHTML = `
     <div style="margin-top:4px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 32px;gap:0;padding:6px 10px;background:var(--bg3)">
+      <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 40px 32px;gap:0;padding:6px 10px;background:var(--bg3)">
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2)">Exercice</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">×</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">Reps</span>
         <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">kg</span>
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);text-align:center">Mode</span>
         <span></span>
       </div>
-      ${tempExercises.map((ex, i) => `
-        <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 32px;gap:0;padding:8px 10px;border-top:1px solid var(--border);align-items:center">
+      ${tempExercises.map((ex, i) => {
+        const isFixed = ex.progression === false;
+        return `
+        <div style="display:grid;grid-template-columns:1fr 36px 36px 48px 40px 32px;gap:0;padding:8px 10px;border-top:1px solid var(--border);align-items:center">
           <span style="font-size:13px;font-weight:600">${ex.name}</span>
           <span style="font-size:13px;text-align:center;color:${ex.defaultSets?'var(--text)':'var(--text2)'}">${ex.defaultSets||'–'}</span>
           <span style="font-size:13px;text-align:center;color:${ex.defaultReps?'var(--text)':'var(--text2)'}">${ex.defaultReps||'–'}</span>
           <span style="font-size:13px;text-align:center;color:${ex.defaultWeight?'var(--accent)':'var(--text2)'}">${ex.defaultWeight||'–'}</span>
+          <button onclick="toggleTempExerciseMode(${i})" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;text-align:center" title="${isFixed?'Fixe (clique pour rendre progressif)':'Progressif (clique pour fixer)'}">${isFixed ? '📌' : '🔁'}</button>
           <button onclick="removeTempExercise(${i})" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;line-height:1;text-align:center">×</button>
-        </div>
-      `).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
