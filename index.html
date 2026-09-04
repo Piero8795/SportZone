@@ -25,6 +25,7 @@
       --nav-h: 70px;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --accent-rgb: 0,230,118;
+      --accent2-rgb: 255,107,53;
     }
     :root[data-theme="light"] {
       --bg: #f4f4f5;
@@ -36,6 +37,7 @@
       --text2: #6b7280;
       --border: #e2e2e4;
       --accent-rgb: 0,163,92;
+      --accent2-rgb: 232,90,42;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
@@ -186,7 +188,8 @@
     }
     .weekly-goal-card { padding: 16px; }
     .goal-bar-track { height: 10px; border-radius: 6px; background: var(--bg3); overflow: hidden; margin-top: 2px; }
-    .goal-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.5s ease; width: 0%; }
+    .goal-bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width 0.5s ease, opacity 0.5s ease; width: 0%; }
+    .goal-bar-fill.cardio { background: var(--accent2); }
     .goal-bar-label { font-size: 12px; color: var(--text2); margin-top: 8px; }
     .week-plan-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
     .week-day { flex: 1; min-width: 58px; text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--bg3); }
@@ -290,7 +293,7 @@
     .chart-container { margin: 0 16px 12px; background: var(--bg2); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
     canvas { max-width: 100%; }
     .pr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px 12px; }
-    .pr-card { background: var(--bg2); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); }
+    .pr-card { background: var(--bg2); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); min-width: 0; }
     .pr-card .name { font-size: 12px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pr-card .val { font-size: 22px; font-weight: 800; color: var(--accent); }
     .pr-card .sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
@@ -355,6 +358,12 @@
     .heatmap-cell.level-1 { background: rgba(var(--accent-rgb), 0.35); }
     .heatmap-cell.level-2 { background: rgba(var(--accent-rgb), 0.65); }
     .heatmap-cell.level-3 { background: rgba(var(--accent-rgb), 1); }
+    .heatmap-cell.cardio-level-1 { background: rgba(var(--accent2-rgb), 0.35); }
+    .heatmap-cell.cardio-level-2 { background: rgba(var(--accent2-rgb), 0.65); }
+    .heatmap-cell.cardio-level-3 { background: rgba(var(--accent2-rgb), 1); }
+    .heatmap-cell.both {
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),1) 0%, rgba(var(--accent-rgb),1) 49%, var(--bg3) 49%, var(--bg3) 51%, rgba(var(--accent2-rgb),1) 51%, rgba(var(--accent2-rgb),1) 100%);
+    }
     .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; color: var(--text2); }
 
     /* Superset */
@@ -395,6 +404,14 @@
     <!-- HOME -->
     <div class="view active" id="home-view">
       <div class="home-hero">
+        <div style="position:absolute;top:54px;right:16px;z-index:2;display:flex;gap:6px">
+          <button class="btn-icon" onclick="editUserName()" title="Changer le prénom affiché">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          </button>
+          <button class="btn-icon" onclick="toggleTheme()" title="Thème clair / sombre">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          </button>
+        </div>
         <h1><span class="hero-emoji" id="greeting-emoji">💪</span> <span id="greeting-word">Bonjour</span><br><span class="hero-name" id="greeting-name">Piero</span></h1>
         <p id="home-subtitle">Prêt pour la séance ?</p>
       </div>
@@ -422,8 +439,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
         </div>
-        <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar-fill"></div></div>
-        <div class="goal-bar-label" id="goal-bar-label">0 / 3 séances cette semaine</div>
+        <div class="goal-bar-track"><div class="goal-bar-fill" id="goal-bar-fill-strength"></div></div>
+        <div class="goal-bar-label" id="goal-bar-label-strength">0 / 3 séances renfo</div>
+        <div class="goal-bar-track" style="margin-top:12px"><div class="goal-bar-fill cardio" id="goal-bar-fill-cardio"></div></div>
+        <div class="goal-bar-label" id="goal-bar-label-cardio">0 / 2 séances cardio</div>
       </div>
       <div class="card" style="padding:14px;margin-bottom:4px">
         <div class="card-title" style="margin-bottom:10px">Assiduité</div>
@@ -1224,7 +1243,7 @@ function renderHome() {
   renderPRBanner();
   renderReminderBanner();
   renderWeekPlan();
-  renderWeeklyGoal(thisWeek);
+  renderWeeklyGoal();
 
   const repeatBtn = document.getElementById('home-repeat-btn');
   if (repeatBtn) repeatBtn.style.display = (!activeSession && findLastFreeSession()) ? 'block' : 'none';
@@ -1328,33 +1347,78 @@ function renderPRBanner() {
 }
 
 // ==================== OBJECTIF HEBDOMADAIRE ====================
-const WEEKLY_GOAL_DEFAULT = 3;
+// Deux objectifs indépendants (renfo / cardio), chacun avec son propre
+// chiffre cible et sa propre barre, pour ne pas mélanger les deux types
+// de séances dans un seul décompte.
+const WEEKLY_GOAL_DEFAULT_STRENGTH = 3;
+const WEEKLY_GOAL_DEFAULT_CARDIO = 2;
 
-function getWeeklyGoal() {
-  const v = parseInt(localStorage.getItem('fittrack_weekly_goal'));
-  return v > 0 ? v : WEEKLY_GOAL_DEFAULT;
+function getWeeklyGoal(type) {
+  const key = type === 'cardio' ? 'fittrack_weekly_goal_cardio' : 'fittrack_weekly_goal_strength';
+  const v = parseInt(localStorage.getItem(key));
+  if (v > 0) return v;
+  if (type !== 'cardio') {
+    // Migration depuis l'ancien objectif unique, avant la séparation renfo/cardio
+    const legacy = parseInt(localStorage.getItem('fittrack_weekly_goal'));
+    if (legacy > 0) return legacy;
+  }
+  return type === 'cardio' ? WEEKLY_GOAL_DEFAULT_CARDIO : WEEKLY_GOAL_DEFAULT_STRENGTH;
 }
 
 function editWeeklyGoal() {
-  const current = getWeeklyGoal();
-  const input = prompt('Combien de séances par semaine veux-tu viser ?', current);
-  if (input === null) return;
-  const n = parseInt(input);
-  if (!n || n < 1 || n > 14) { showToast('Entre un nombre entre 1 et 14'); return; }
-  localStorage.setItem('fittrack_weekly_goal', String(n));
+  const currentStrength = getWeeklyGoal('strength');
+  const inputS = prompt('Combien de séances de renfo par semaine veux-tu viser ?', currentStrength);
+  if (inputS === null) return;
+  const ns = parseInt(inputS);
+  if (!ns || ns < 1 || ns > 14) { showToast('Entre un nombre entre 1 et 14'); return; }
+  localStorage.setItem('fittrack_weekly_goal_strength', String(ns));
+
+  const currentCardio = getWeeklyGoal('cardio');
+  const inputC = prompt('Combien de séances de cardio par semaine veux-tu viser ?', currentCardio);
+  if (inputC !== null) {
+    const nc = parseInt(inputC);
+    if (!nc || nc < 1 || nc > 14) { showToast('Entre un nombre entre 1 et 14'); renderHome(); return; }
+    localStorage.setItem('fittrack_weekly_goal_cardio', String(nc));
+  }
   renderHome();
 }
 
-function renderWeeklyGoal(weeklyCount) {
-  const goal = getWeeklyGoal();
-  const pct = Math.min(100, Math.round((weeklyCount / goal) * 100));
-  const fill = document.getElementById('goal-bar-fill');
-  const label = document.getElementById('goal-bar-label');
-  if (!fill || !label) return;
-  fill.style.width = pct + '%';
-  label.textContent = weeklyCount >= goal
-    ? `🎉 Objectif atteint : ${weeklyCount}/${goal} séances cette semaine !`
-    : `${weeklyCount} / ${goal} séances cette semaine`;
+function renderWeeklyGoal() {
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
+  const weekSessions = db.sessions.filter(s => new Date(s.date) >= weekStart);
+  const strengthCount = weekSessions.filter(s => s.type !== 'cardio').length;
+  const cardioCount = weekSessions.filter(s => s.type === 'cardio').length;
+
+  const goalS = getWeeklyGoal('strength');
+  const goalC = getWeeklyGoal('cardio');
+  const fillS = document.getElementById('goal-bar-fill-strength');
+  const labelS = document.getElementById('goal-bar-label-strength');
+  const fillC = document.getElementById('goal-bar-fill-cardio');
+  const labelC = document.getElementById('goal-bar-label-cardio');
+  if (!fillS || !labelS || !fillC || !labelC) return;
+
+  const pctS = Math.min(100, Math.round((strengthCount / goalS) * 100));
+  fillS.style.width = pctS + '%';
+  fillS.style.opacity = goalIntensity(strengthCount, goalS);
+  labelS.textContent = strengthCount >= goalS
+    ? `🎉 ${strengthCount}/${goalS} séances renfo`
+    : `${strengthCount} / ${goalS} séances renfo`;
+
+  const pctC = Math.min(100, Math.round((cardioCount / goalC) * 100));
+  fillC.style.width = pctC + '%';
+  fillC.style.opacity = goalIntensity(cardioCount, goalC);
+  labelC.textContent = cardioCount >= goalC
+    ? `🎉 ${cardioCount}/${goalC} séances cardio`
+    : `${cardioCount} / ${goalC} séances cardio`;
+}
+
+// Intensité de couleur de la barre : plus pâle en début de semaine, pleine
+// couleur une fois l'objectif atteint — même logique que les niveaux de la
+// heatmap d'assiduité (clair → foncé selon le nombre de séances).
+function goalIntensity(count, goal) {
+  if (count <= 0) return 0.35;
+  return 0.35 + 0.65 * Math.min(1, count / goal);
 }
 
 // ==================== RAPPEL SI PAS DE SÉANCE DEPUIS X JOURS ====================
@@ -1483,10 +1547,14 @@ function renderHeatmap() {
   const dow = (start.getDay() + 6) % 7; // 0 = lundi
   start.setDate(start.getDate() - dow);
 
-  const countByDay = {};
+  // Comptage séparé renfo / cardio par jour, pour distinguer les deux dans la heatmap
+  // (vert = renfo, orange = cardio, diagonale bicolore = les deux le même jour).
+  const strengthByDay = {};
+  const cardioByDay = {};
   db.sessions.forEach(s => {
     const key = new Date(s.date).toDateString();
-    countByDay[key] = (countByDay[key] || 0) + 1;
+    if (s.type === 'cardio') cardioByDay[key] = (cardioByDay[key] || 0) + 1;
+    else strengthByDay[key] = (strengthByDay[key] || 0) + 1;
   });
 
   const totalSpan = Math.ceil((today - start) / 86400000) + 1;
@@ -1497,10 +1565,23 @@ function renderHeatmap() {
     for (let d = 0; d < 7; d++) {
       const cur = new Date(start); cur.setDate(start.getDate() + w * 7 + d);
       if (cur > today) { col += `<div class="heatmap-cell future"></div>`; continue; }
-      const c = countByDay[cur.toDateString()] || 0;
-      const level = c === 0 ? 0 : c === 1 ? 1 : c === 2 ? 2 : 3;
+      const key = cur.toDateString();
+      const cs = strengthByDay[key] || 0;
+      const cc = cardioByDay[key] || 0;
       const dateLabel = cur.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
-      col += `<div class="heatmap-cell level-${level}" title="${dateLabel}${c ? ' · ' + c + ' séance' + (c>1?'s':'') : ''}"></div>`;
+      const parts = [];
+      if (cs) parts.push(cs + ' renfo');
+      if (cc) parts.push(cc + ' cardio');
+      const titleSuffix = parts.length ? ' · ' + parts.join(' · ') : '';
+      let cls;
+      if (cs > 0 && cc > 0) {
+        cls = 'both';
+      } else if (cc > 0) {
+        cls = 'cardio-level-' + (cc === 1 ? 1 : cc === 2 ? 2 : 3);
+      } else {
+        cls = 'level-' + (cs === 0 ? 0 : cs === 1 ? 1 : cs === 2 ? 2 : 3);
+      }
+      col += `<div class="heatmap-cell ${cls}" title="${dateLabel}${titleSuffix}"></div>`;
     }
     html += `<div class="heatmap-col">${col}</div>`;
   }
