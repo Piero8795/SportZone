@@ -2349,6 +2349,7 @@ function renderVolumeByGroup() {
   const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
 
   const volByGroup = {};
+  const namesByGroup = {}; // pour pouvoir afficher le détail sous "Autre"
   db.sessions.forEach(s => {
     if (s.type === 'cardio') return;
     if (new Date(s.date) < weekStart) return;
@@ -2356,7 +2357,11 @@ function renderVolumeByGroup() {
       const group = getMuscleGroup(ex.name);
       let vol = 0;
       ex.sets.forEach(st => { if (st.done && !st.warmup) vol += (parseFloat(st.weight)||0) * (parseInt(st.reps)||0); });
-      if (vol > 0) volByGroup[group] = (volByGroup[group] || 0) + vol;
+      if (vol > 0) {
+        volByGroup[group] = (volByGroup[group] || 0) + vol;
+        if (!namesByGroup[group]) namesByGroup[group] = new Set();
+        namesByGroup[group].add(ex.name);
+      }
     });
   });
 
@@ -2368,6 +2373,7 @@ function renderVolumeByGroup() {
     <div class="vol-bar-row">
       <div class="vol-bar-label"><span class="g-name">${group}</span><span class="g-val">${vol.toLocaleString('fr')} kg</span></div>
       <div class="vol-bar-track"><div class="vol-bar-fill" style="width:${Math.max(4, Math.round(vol/max*100))}%"></div></div>
+      ${group === 'Autre' ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">${[...namesByGroup[group]].join(', ')}</div>` : ''}
     </div>`).join('');
 }
 
