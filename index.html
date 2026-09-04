@@ -198,15 +198,22 @@
     .goal-bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width 0.5s ease, opacity 0.5s ease; width: 0%; }
     .goal-bar-fill.cardio { background: var(--accent2); }
     .goal-bar-label { font-size: 12px; color: var(--text2); margin-top: 8px; }
-    .week-plan-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-    .week-day { flex: 1; min-width: 58px; text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--bg3); cursor: pointer; user-select: none; transition: transform 0.1s; border: 1px solid transparent; }
+    .week-plan-row { display: flex; gap: 4px; }
+    .week-day { flex: 1; min-width: 0; text-align: center; padding: 8px 2px; border-radius: 8px; background: var(--bg3); cursor: pointer; user-select: none; transition: transform 0.1s, background 0.3s; border: 1px solid transparent; }
     .week-day:active { transform: scale(0.94); }
     .week-day.today { border-color: var(--accent); }
     .week-day.type-strength { background: rgba(var(--accent-rgb), 0.28); }
     .week-day.type-cardio { background: rgba(var(--accent2-rgb), 0.28); }
     .week-day.type-both { background: linear-gradient(135deg, rgba(var(--accent-rgb),0.28) 0%, rgba(var(--accent-rgb),0.28) 49%, var(--bg3) 49%, var(--bg3) 51%, rgba(var(--accent2-rgb),0.28) 51%, rgba(var(--accent2-rgb),0.28) 100%); }
-    .week-day .wd-dow { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; }
-    .week-day .wd-label { font-size: 11px; font-weight: 700; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Séance déjà loggée ce jour-là : même couleur mais en intensité maximale
+       (remplace l'ancienne coche ✅) — le texte passe en blanc pour rester lisible. */
+    .week-day.type-strength.done { background: rgba(var(--accent-rgb), 0.9); }
+    .week-day.type-cardio.done { background: rgba(var(--accent2-rgb), 0.9); }
+    .week-day.type-both.done { background: linear-gradient(135deg, rgba(var(--accent-rgb),0.9) 0%, rgba(var(--accent-rgb),0.9) 49%, var(--bg3) 49%, var(--bg3) 51%, rgba(var(--accent2-rgb),0.9) 51%, rgba(var(--accent2-rgb),0.9) 100%); }
+    .week-day.done .wd-dow { color: rgba(255,255,255,0.85); }
+    .week-day.done .wd-label { color: #fff; }
+    .week-day .wd-dow { font-size: 9px; font-weight: 700; color: var(--text2); text-transform: uppercase; }
+    .week-day .wd-label { font-size: 10px; font-weight: 700; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .recent-session {
       display: flex; justify-content: space-between; align-items: center;
@@ -1295,6 +1302,14 @@ function loadDB() {
   if (!db.programs) db.programs = [];
   if (db.activeProgramId === undefined) db.activeProgramId = null;
   if (!db.exerciseGroupOverrides) db.exerciseGroupOverrides = {};
+  // Anciennes séances cardio enregistrées avant l'ajout du champ `exercises`
+  // (toujours vide pour du cardio, mais requis par tout le code qui fait
+  // s.exercises.map/.forEach sans distinction de type) : on le rajoute pour
+  // éviter un plantage silencieux (ex. impossible de supprimer/afficher
+  // une vieille séance cardio dans l'historique).
+  if (db.sessions) {
+    db.sessions.forEach(s => { if (!Array.isArray(s.exercises)) s.exercises = []; });
+  }
 }
 
 function saveDB() {
@@ -1591,7 +1606,7 @@ function renderReminderBanner() {
 // purement indicatif — ça ne bloque rien si tu t'entraînes un autre jour.
 const WEEKDAY_NAMES = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const DAY_TYPE_CYCLE = ['none', 'strength', 'cardio', 'both'];
-const DAY_TYPE_LABELS = { none: 'Repos', strength: 'Renfo', cardio: 'Cardio', both: 'Renfo + Cardio' };
+const DAY_TYPE_LABELS = { none: 'Repos', strength: 'Renfo', cardio: 'Cardio', both: 'Les 2' };
 
 // Ancien réglage (avant la version type-aware), gardé uniquement pour migrer
 // en douceur les utilisateurs qui avaient déjà choisi leurs jours.
@@ -1668,9 +1683,9 @@ function renderWeekPlan() {
   }
 
   row.innerHTML = cells.map(c => `
-    <div class="week-day type-${c.type} ${c.isToday ? 'today' : ''}" onclick="cycleDayType(${c.i})">
+    <div class="week-day type-${c.type} ${c.isDone ? 'done' : ''} ${c.isToday ? 'today' : ''}" onclick="cycleDayType(${c.i})">
       <div class="wd-dow">${c.dow}</div>
-      <div class="wd-label">${c.isDone ? '✅ ' : ''}${DAY_TYPE_LABELS[c.type]}</div>
+      <div class="wd-label">${DAY_TYPE_LABELS[c.type]}</div>
     </div>`).join('');
 }
 
@@ -2290,7 +2305,7 @@ function saveSession() {
   saveBackupSnapshot();
   stopTimer();
   hideRestTimer();
-  advanceProgram();
+  advanceProgram(activeSession.templateId);
   const finishedSession = activeSession;
   activeSession = null;
   navigate('home');
@@ -2428,17 +2443,11 @@ function saveQuickLog() {
   saveDB();
   saveBackupSnapshot();
 
-  // Ne fait avancer le programme actif que si ce log correspondait bien au
-  // template cardio proposé en tant que prochaine étape de la rotation —
-  // un log cardio "libre" (bouton Cardio de l'accueil) ne doit pas la faire
-  // avancer toute seule.
-  if (quickLogTemplateId) {
-    const program = getActiveProgram();
-    if (program && program.templateIds[program.currentIndex] === quickLogTemplateId) {
-      advanceProgram();
-    }
-    quickLogTemplateId = null;
-  }
+  // N'avance le programme actif que si ce log correspondait bien au template
+  // cardio proposé comme prochaine étape — un log cardio "libre" (bouton
+  // Cardio de l'accueil) ne doit pas la faire avancer toute seule.
+  advanceProgram(quickLogTemplateId);
+  quickLogTemplateId = null;
 
   closeModal('modal-quicklog');
   renderHome();
@@ -3582,9 +3591,14 @@ function renderProgramCard() {
 }
 
 // Avance la rotation du programme actif après une séance sauvegardée
-function advanceProgram() {
+// N'avance la rotation que si la séance sauvegardée correspond bien au
+// template proposé comme prochaine étape (templateId) — une séance libre,
+// ou un autre template que celui attendu, ne doit pas la faire sauter en
+// avant "gratuitement".
+function advanceProgram(templateId) {
   const program = getActiveProgram();
   if (!program) return;
+  if (program.templateIds[program.currentIndex] !== templateId) return;
   program.currentIndex = (program.currentIndex + 1) % program.templateIds.length;
   if (program.deloadEvery > 0) {
     program.completedSinceDeload++;
