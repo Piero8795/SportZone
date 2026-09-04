@@ -477,14 +477,17 @@
 
     <!-- PROGRESS -->
     <div class="view" id="progress-view">
-      <div class="page-header">
-        <h1>Progression</h1>
-        <p>Tes records et évolutions</p>
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end">
+        <div><h1>Progression</h1><p>Tes records et évolutions</p></div>
+        <button class="btn-icon" style="margin-bottom:2px" onclick="openManageExercisesModal()" title="Gérer mes exercices">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
       </div>
 
       <div class="card" id="total-vol-card" style="display:none">
         <div class="card-title" style="margin-bottom:12px">Volume total par semaine</div>
         <canvas id="total-vol-chart" height="160"></canvas>
+        <div id="total-vol-detail" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"></div>
       </div>
 
       <div class="card" id="vol-group-card" style="display:none">
@@ -772,6 +775,23 @@
   </div>
 </div>
 
+<!-- MODAL: Gérer mes exercices -->
+<div class="modal-overlay" id="modal-manage-exercises">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Gérer mes exercices</h3>
+      <button class="btn-icon" onclick="closeModal('modal-manage-exercises')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px">Tous tes exercices, avec le nombre de séances où ils apparaissent. Repère les doublons (noms proches) et fusionne-les directement.</p>
+      <div id="manage-exercises-list"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Log rapide Handball / Cardio -->
 <div class="modal-overlay" id="modal-quicklog">
   <div class="modal">
@@ -950,7 +970,7 @@
 
 <script>
 // ==================== DATA ====================
-let db = { sessions: [], templates: [], bodyweight: [], programs: [], activeProgramId: null };
+let db = { sessions: [], templates: [], bodyweight: [], programs: [], activeProgramId: null, exerciseGroupOverrides: {} };
 let activeSession = null;
 let timerInterval = null;
 let timerStart = null;
@@ -1102,11 +1122,27 @@ const GROUP_KEYWORDS = [
   [/crunch|gainage|abdo|planche|ab wheel|russian twist/, 'Abdominaux'],
   [/burpee|corde|rameur|velo|tapis|assault|kettlebell|battle rope|sled|farmer|clean|snatch|thruster/, 'Cardio / Fonctionnel']
 ];
-function getMuscleGroup(name) {
+const ALL_MUSCLE_GROUPS = [...Object.keys(EXERCISE_GROUPS), 'Autre'];
+// Détection automatique seule (sans tenir compte d'une éventuelle attribution
+// manuelle) — utilisé pour afficher "Auto (...)" dans le sélecteur même quand
+// l'exercice a été réattribué à la main.
+function autoMuscleGroup(name) {
   const norm = normalizeExerciseName(name);
   if (EXERCISE_TO_GROUP_NORM[norm]) return EXERCISE_TO_GROUP_NORM[norm];
   for (const [re, group] of GROUP_KEYWORDS) if (re.test(norm)) return group;
   return 'Autre';
+}
+function getMuscleGroup(name) {
+  const norm = normalizeExerciseName(name);
+  if (db.exerciseGroupOverrides && db.exerciseGroupOverrides[norm]) return db.exerciseGroupOverrides[norm];
+  return autoMuscleGroup(name);
+}
+function setExerciseGroupOverride(name, group) {
+  const norm = normalizeExerciseName(name);
+  if (!norm) return;
+  if (!group) delete db.exerciseGroupOverrides[norm]; // "Auto" : retour à la détection automatique
+  else db.exerciseGroupOverrides[norm] = group;
+  saveDB();
 }
 
 function loadDB() {
@@ -1118,6 +1154,7 @@ function loadDB() {
   if (!db.bodyweight) db.bodyweight = [];
   if (!db.programs) db.programs = [];
   if (db.activeProgramId === undefined) db.activeProgramId = null;
+  if (!db.exerciseGroupOverrides) db.exerciseGroupOverrides = {};
 }
 
 function saveDB() {
@@ -2371,6 +2408,20 @@ function renderTotalVolumeChart() {
       }
     }
   });
+
+  // Détail de la dernière semaine affichée (séance par séance), pour pouvoir
+  // vérifier d'un coup d'œil d'où vient le total du dernier bâton du graphique.
+  const lastWeekKey = weeks[weeks.length - 1];
+  const lastWeekSessions = strengthSessions.filter(s => weekKey(s.date) === lastWeekKey)
+    .map(s => ({ s, vol: calcVolume(s) }))
+    .sort((a,b) => new Date(a.s.date) - new Date(b.s.date));
+  const detail = document.getElementById('total-vol-detail');
+  detail.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:8px">Détail de la semaine en cours</div>` +
+    lastWeekSessions.map(({s, vol}) => `
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+        <span>${new Date(s.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})} · ${s.name}</span>
+        <span style="font-weight:700">${Math.round(vol).toLocaleString('fr')} kg</span>
+      </div>`).join('');
 }
 
 // ==================== VOLUME HEBDO PAR GROUPE MUSCULAIRE ====================
@@ -2564,9 +2615,10 @@ function onProgressExerciseChange() {
 // "Élévation latérale" / "Élévation latérales" / "Élévation latérale poulie
 // haute") : renomme toutes les occurrences (séances + templates) vers un nom
 // cible commun, pour que l'historique et les PR ne soient plus fragmentés.
-function openMergeExerciseModal() {
-  const name = document.getElementById('progress-exercise-select').value;
+function openMergeExerciseModal(presetName) {
+  const name = presetName || document.getElementById('progress-exercise-select').value;
   if (!name) return;
+  mergeReturnToManage = !!presetName;
   document.getElementById('merge-source-name').textContent = name;
   const targetSelect = document.getElementById('merge-target-select');
   const others = canonicalExerciseNames(db.sessions.flatMap(s => s.exercises.map(e => e.name)))
@@ -2600,6 +2652,51 @@ function confirmMergeExercise() {
   closeModal('modal-merge-exercise');
   showToast(`Fusionné (${count} occurrence${count>1?'s':''}) !`);
   renderProgress();
+  if (mergeReturnToManage) { mergeReturnToManage = false; openManageExercisesModal(); }
+}
+
+// ==================== GESTION DES EXERCICES ====================
+// Liste tous les exercices utilisés avec leur nombre de séances, pour repérer
+// d'un coup d'œil d'éventuels doublons (noms proches) et les fusionner
+// directement, plutôt que de tomber dessus au hasard dans Progression.
+let mergeReturnToManage = false;
+
+function openManageExercisesModal() {
+  renderManageExercisesList();
+  openModal('modal-manage-exercises');
+}
+
+function renderManageExercisesList() {
+  const rawNames = db.sessions.flatMap(s => s.exercises.map(e => e.name));
+  const names = canonicalExerciseNames(rawNames);
+  const list = document.getElementById('manage-exercises-list');
+  if (!names.length) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--text2)">Aucun exercice enregistré pour le moment.</p>';
+    return;
+  }
+  list.innerHTML = names.map(name => {
+    const count = db.sessions.filter(s => s.exercises.some(e => sameExercise(e.name, name))).length;
+    const group = getMuscleGroup(name);
+    const autoGroup = autoMuscleGroup(name);
+    const isOverridden = !!(db.exerciseGroupOverrides && db.exerciseGroupOverrides[normalizeExerciseName(name)]);
+    const safeName = name.replace(/'/g,"\\'");
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${count} séance${count>1?'s':''}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0" onclick="openMergeExerciseModal('${safeName}')">🔀 Fusionner</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+        <select class="form-input" style="font-size:12px;padding:6px 10px" onchange="setExerciseGroupOverride('${safeName}', this.value); renderManageExercisesList();">
+          <option value="" ${!isOverridden?'selected':''}>Auto (${autoGroup})</option>
+          ${ALL_MUSCLE_GROUPS.map(g => `<option value="${g}" ${isOverridden && g===group?'selected':''}>${g}</option>`).join('')}
+        </select>
+        ${isOverridden ? '<span title="Groupe attribué manuellement" style="flex-shrink:0">📌</span>' : ''}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderProgressChart() {
