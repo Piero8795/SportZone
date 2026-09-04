@@ -188,6 +188,51 @@
       animation: prPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
     }
     @keyframes prPop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    /* ---- BADGES ---- */
+    .badges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 16px 16px; }
+    .badge-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 8px; text-align: center; min-width: 0; }
+    .badge-card .badge-emoji { font-size: 30px; filter: grayscale(1) opacity(0.35); }
+    .badge-card.unlocked { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.07); }
+    .badge-card.unlocked .badge-emoji { filter: none; }
+    .badge-card .badge-name { font-size: 11px; font-weight: 700; margin-top: 8px; color: var(--text2); }
+    .badge-card.unlocked .badge-name { color: var(--text); }
+    .badge-card .badge-desc { font-size: 10px; color: var(--text2); margin-top: 3px; line-height: 1.3; }
+    .badge-card .badge-date { font-size: 9px; color: var(--accent); margin-top: 5px; font-weight: 700; text-transform: uppercase; }
+    .recap-badge-row { display: flex; align-items: center; gap: 10px; background: rgba(255,179,0,0.14); border: 1px solid #ffb300; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; animation: prPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+    .recap-badge-row .rb-emoji { font-size: 26px; flex-shrink: 0; }
+    .recap-badge-row .rb-txt b { display: block; font-size: 13px; }
+    .recap-badge-row .rb-txt span { font-size: 11px; color: var(--text2); }
+
+    /* ---- BILAN MENSUEL "WRAPPED" ---- */
+    #wrapped-overlay {
+      position: fixed; inset: 0; z-index: 150;
+      background: radial-gradient(circle at 30% 0%, #1c2b22 0%, #0f0f0f 55%);
+      display: none; flex-direction: column;
+    }
+    #wrapped-overlay.active { display: flex; }
+    .wrapped-topbar { display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top,0px) + 14px) 16px 4px; }
+    .wrapped-dots { display: flex; gap: 5px; flex: 1; }
+    .wrapped-dot { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.22); overflow: hidden; }
+    .wrapped-dot.past, .wrapped-dot.current { background: #fff; }
+    .wrapped-month-nav { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 16px 2px; color: #fff; font-size: 13px; font-weight: 700; text-transform: capitalize; }
+    .wrapped-month-nav .btn-icon { width: 30px; height: 30px; font-size: 18px; }
+    .wrapped-cards { flex: 1; position: relative; overflow: hidden; }
+    .wrapped-card {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 20px 34px; opacity: 0; transform: scale(0.95);
+      transition: opacity 0.35s ease, transform 0.35s ease; pointer-events: none; color: #fff;
+    }
+    .wrapped-card.active { opacity: 1; transform: scale(1); pointer-events: auto; }
+    .wrapped-card .wc-emoji { font-size: 54px; margin-bottom: 18px; }
+    .wrapped-card .wc-value {
+      font-size: 42px; font-weight: 800; line-height: 1.15;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .wrapped-card .wc-label { font-size: 15px; color: rgba(255,255,255,0.65); margin-top: 10px; font-weight: 600; }
+    .wrapped-card .wc-sub { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 20px; line-height: 1.7; }
+    .wrapped-tapzone { position: absolute; top: 0; bottom: 0; width: 32%; z-index: 2; }
+    .wrapped-tapzone.left { left: 0; } .wrapped-tapzone.right { right: 0; }
     .reminder-banner {
       margin: 0 16px 16px; padding: 14px 16px; border-radius: var(--radius);
       background: rgba(255,59,48,0.10); border: 1px solid #ff3b30; font-size: 14px; font-weight: 600;
@@ -596,6 +641,15 @@
       <div id="templates-list"></div>
     </div>
 
+    <div class="view" id="badges-view">
+      <div class="page-header" style="padding-top:54px;padding-bottom:6px">
+        <h1>🏆 Récompenses</h1>
+        <p id="badges-subtitle">0 / 0 badges débloqués</p>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin:0 16px 18px" onclick="openWrapped()">✨ Voir mon bilan du mois</button>
+      <div class="badges-grid" id="badges-grid"></div>
+    </div>
+
   </div><!-- /views -->
 
   <!-- BOTTOM NAV -->
@@ -621,6 +675,10 @@
     <button class="nav-btn" onclick="navigate('templates')" id="nav-templates">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       Templates
+    </button>
+    <button class="nav-btn" onclick="navigate('badges')" id="nav-badges">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15a6 6 0 100-12 6 6 0 000 12z"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 13.5L7 22l5-3 5 3-1.5-8.5"/></svg>
+      Badges
     </button>
   </nav>
 </div>
@@ -1112,12 +1170,31 @@
   </div>
 </div>
 
+<!-- BILAN MENSUEL "WRAPPED" -->
+<div id="wrapped-overlay">
+  <div class="wrapped-topbar">
+    <div class="wrapped-dots" id="wrapped-dots"></div>
+    <button class="btn-icon" style="background:rgba(255,255,255,0.12);color:#fff;flex-shrink:0" onclick="closeWrapped()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="wrapped-month-nav">
+    <button class="btn-icon" style="background:transparent;color:#fff" onclick="shiftWrappedMonth(-1)">‹</button>
+    <span id="wrapped-month-label">-</span>
+    <button class="btn-icon" style="background:transparent;color:#fff" onclick="shiftWrappedMonth(1)" id="wrapped-next-btn">›</button>
+  </div>
+  <div class="wrapped-cards" id="wrapped-cards">
+    <div class="wrapped-tapzone left" onclick="wrappedPrevCard()"></div>
+    <div class="wrapped-tapzone right" onclick="wrappedNextCard()"></div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
 <script>
 // ==================== DATA ====================
-let db = { sessions: [], templates: [], bodyweight: [], programs: [], activeProgramId: null, exerciseGroupOverrides: {} };
+let db = { sessions: [], templates: [], bodyweight: [], programs: [], activeProgramId: null, exerciseGroupOverrides: {}, unlockedBadges: {} };
 let activeSession = null;
 let timerInterval = null;
 let timerStart = null;
@@ -1302,6 +1379,7 @@ function loadDB() {
   if (!db.programs) db.programs = [];
   if (db.activeProgramId === undefined) db.activeProgramId = null;
   if (!db.exerciseGroupOverrides) db.exerciseGroupOverrides = {};
+  if (!db.unlockedBadges) db.unlockedBadges = {};
   // Anciennes séances cardio enregistrées avant l'ajout du champ `exercises`
   // (toujours vide pour du cardio, mais requis par tout le code qui fait
   // s.exercises.map/.forEach sans distinction de type) : on le rajoute pour
@@ -1334,13 +1412,13 @@ function navigate(view) {
   if (view === 'history') renderHistory();
   if (view === 'progress') renderProgress();
   if (view === 'templates') renderTemplates();
+  if (view === 'badges') renderBadgesTab();
 }
 
-// ==================== HOME ====================
-function renderHome() {
-  const now = new Date();
-  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
-  const thisWeek = db.sessions.filter(s => new Date(s.date) >= weekStart).length;
+// Nombre de jours consécutifs (jusqu'à aujourd'hui ou hier) avec au moins
+// une séance. Factorisé pour être réutilisé par le stat-pill de l'accueil
+// et par la condition des badges de streak.
+function computeStreakDays() {
   let streak = 0;
   const days = [...new Set(db.sessions.map(s => new Date(s.date).toDateString()))].sort((a,b) => new Date(b)-new Date(a));
   if (days.length) {
@@ -1353,6 +1431,15 @@ function renderHome() {
       else break;
     }
   }
+  return streak;
+}
+
+// ==================== HOME ====================
+function renderHome() {
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
+  const thisWeek = db.sessions.filter(s => new Date(s.date) >= weekStart).length;
+  const streak = computeStreakDays();
   animateCountUp('stat-total', db.sessions.length);
   animateCountUp('stat-week', thisWeek);
   animateCountUp('stat-streak', streak);
@@ -1485,6 +1572,94 @@ function renderPRBanner() {
     ? `🎉 Nouveau record sur ${prs[0].name} : ${prs[0].weight} kg !`
     : `🎉 ${prs.length} nouveaux records aujourd'hui : ${prs.map(p=>p.name).join(', ')} !`;
   banner.innerHTML = `<div class="pr-banner">${text}</div>`;
+}
+
+// ==================== BADGES / RÉCOMPENSES ====================
+// Système purement dérivé des données existantes : rien n'est dupliqué à
+// part la date de déblocage (db.unlockedBadges = { badgeId: dateISO }).
+// Une fois débloqué un badge reste acquis pour toujours, même si la
+// condition redevient fausse plus tard (ex: streak cassée) — voir checkBadges().
+function totalStrengthVolume() {
+  return db.sessions.filter(s => s.type !== 'cardio').reduce((a, s) => a + calcVolume(s), 0);
+}
+function totalCardioKm() {
+  return db.sessions.filter(s => s.type === 'cardio').reduce((a, s) => a + (parseFloat(s.distanceKm) || 0), 0);
+}
+function hasBothTypesSameDay() {
+  const byDay = {};
+  db.sessions.forEach(s => {
+    const key = new Date(s.date).toDateString();
+    if (!byDay[key]) byDay[key] = new Set();
+    byDay[key].add(s.type === 'cardio' ? 'cardio' : 'strength');
+  });
+  return Object.values(byDay).some(set => set.has('strength') && set.has('cardio'));
+}
+function countTotalPRs() {
+  return db.sessions.filter(s => s.type !== 'cardio').reduce((a, s) => a + computeNewPRsForSession(s).length, 0);
+}
+function hasWeeklyGoalBothReached() {
+  const goalS = getWeeklyGoal('strength'), goalC = getWeeklyGoal('cardio');
+  const byWeek = {};
+  db.sessions.forEach(s => {
+    const d = new Date(s.date);
+    const weekStart = new Date(d); weekStart.setDate(d.getDate() - ((d.getDay()+6)%7)); weekStart.setHours(0,0,0,0);
+    const key = weekStart.toISOString();
+    if (!byWeek[key]) byWeek[key] = { s: 0, c: 0 };
+    if (s.type === 'cardio') byWeek[key].c++; else byWeek[key].s++;
+  });
+  return Object.values(byWeek).some(w => w.s >= goalS && w.c >= goalC);
+}
+
+const BADGES = [
+  { id: 'first_session', emoji: '🎬', name: 'Premier pas', desc: 'Enregistrer ta toute première séance', check: () => db.sessions.length >= 1 },
+  { id: 'sessions_10', emoji: '🥉', name: 'Habitué', desc: '10 séances enregistrées', check: () => db.sessions.length >= 10 },
+  { id: 'sessions_50', emoji: '🥈', name: 'Régulier', desc: '50 séances enregistrées', check: () => db.sessions.length >= 50 },
+  { id: 'sessions_100', emoji: '🥇', name: 'Vétéran', desc: '100 séances enregistrées', check: () => db.sessions.length >= 100 },
+  { id: 'streak_7', emoji: '🔥', name: 'Une semaine de feu', desc: '7 jours de suite avec une séance', check: () => computeStreakDays() >= 7 },
+  { id: 'streak_30', emoji: '🚒', name: 'Inarrêtable', desc: '30 jours de suite avec une séance', check: () => computeStreakDays() >= 30 },
+  { id: 'volume_10k', emoji: '🏋️', name: 'Dix tonnes', desc: '10 000 kg de volume cumulé en renfo', check: () => totalStrengthVolume() >= 10000 },
+  { id: 'volume_100k', emoji: '🏔️', name: 'Cent tonnes', desc: '100 000 kg de volume cumulé en renfo', check: () => totalStrengthVolume() >= 100000 },
+  { id: 'cardio_10k', emoji: '🏃', name: 'Premiers kilomètres', desc: '10 km cumulés en cardio', check: () => totalCardioKm() >= 10 },
+  { id: 'cardio_100k', emoji: '🚀', name: 'Grand voyageur', desc: '100 km cumulés en cardio', check: () => totalCardioKm() >= 100 },
+  { id: 'both_same_day', emoji: '⚡', name: 'Double détente', desc: 'Renfo et cardio le même jour', check: () => hasBothTypesSameDay() },
+  { id: 'goal_both', emoji: '🎯', name: 'Objectif de la semaine', desc: "Objectif hebdo renfo ET cardio atteint la même semaine", check: () => hasWeeklyGoalBothReached() },
+  { id: 'pr_5', emoji: '💪', name: 'Force en hausse', desc: '5 records personnels battus au total', check: () => countTotalPRs() >= 5 },
+  { id: 'early_bird', emoji: '🌅', name: 'Lève-tôt', desc: 'Une séance loggée avant 7h', check: () => db.sessions.some(s => new Date(s.date).getHours() < 7) },
+  { id: 'night_owl', emoji: '🌙', name: 'Oiseau de nuit', desc: 'Une séance loggée après 22h', check: () => db.sessions.some(s => new Date(s.date).getHours() >= 22) },
+];
+
+// Réévalue les conditions de tous les badges pas encore débloqués ; renvoie
+// la liste de ceux qui viennent (juste maintenant) d'être débloqués.
+function checkBadges() {
+  if (!db.unlockedBadges) db.unlockedBadges = {};
+  const newly = [];
+  BADGES.forEach(b => {
+    if (db.unlockedBadges[b.id]) return;
+    if (b.check()) {
+      db.unlockedBadges[b.id] = new Date().toISOString();
+      newly.push(b);
+    }
+  });
+  if (newly.length) saveDB();
+  return newly;
+}
+
+function renderBadgesTab() {
+  const grid = document.getElementById('badges-grid');
+  const subtitle = document.getElementById('badges-subtitle');
+  if (!grid) return;
+  const unlocked = db.unlockedBadges || {};
+  const unlockedCount = BADGES.filter(b => unlocked[b.id]).length;
+  if (subtitle) subtitle.textContent = `${unlockedCount} / ${BADGES.length} badges débloqués`;
+  grid.innerHTML = BADGES.map(b => {
+    const date = unlocked[b.id];
+    return `<div class="badge-card ${date ? 'unlocked' : ''}">
+      <div class="badge-emoji">${b.emoji}</div>
+      <div class="badge-name">${b.name}</div>
+      <div class="badge-desc">${b.desc}</div>
+      ${date ? `<div class="badge-date">${formatDate(date)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ==================== OBJECTIF HEBDOMADAIRE ====================
@@ -2306,10 +2481,11 @@ function saveSession() {
   stopTimer();
   hideRestTimer();
   advanceProgram(activeSession.templateId);
+  const newlyEarnedBadges = checkBadges();
   const finishedSession = activeSession;
   activeSession = null;
   navigate('home');
-  showRecap(finishedSession);
+  showRecap(finishedSession, newlyEarnedBadges);
 }
 
 // ==================== RECAP ====================
@@ -2323,35 +2499,230 @@ function formatDuration(sec) {
   return `${ss} s`;
 }
 
-function showRecap(session) {
-  const vol = calcVolume(session);
+// Détecte si la séance cardio qui vient d'être enregistrée bat un record
+// (durée ou distance) pour son type de sport, par rapport à l'historique
+// antérieur uniquement (comme computeNewPRsForSession pour le renfo).
+function computeCardioPRsForSession(session) {
+  if (!session || session.type !== 'cardio') return [];
+  const prior = db.sessions.filter(s => s.id !== session.id && s.type === 'cardio' && s.sportType === session.sportType && new Date(s.date) < new Date(session.date));
+  if (!prior.length) return [];
+  const prs = [];
+  const bestDuration = Math.max(0, ...prior.map(s => s.duration || 0));
+  if ((session.duration || 0) > bestDuration) prs.push(`Durée : ${formatDuration(session.duration)}`);
+  const priorDist = prior.filter(s => s.distanceKm > 0).map(s => s.distanceKm);
+  const bestDist = priorDist.length ? Math.max(...priorDist) : 0;
+  if ((session.distanceKm || 0) > 0 && session.distanceKm > bestDist) prs.push(`Distance : ${session.distanceKm} km`);
+  return prs;
+}
+
+function showRecap(session, newlyEarnedBadges) {
+  newlyEarnedBadges = newlyEarnedBadges || [];
+  const isCardio = session.type === 'cardio';
+  const vol = isCardio ? 0 : calcVolume(session);
+  const prs = isCardio ? [] : computeNewPRsForSession(session);
+  const cardioPrs = isCardio ? computeCardioPRsForSession(session) : [];
   const body = document.getElementById('recap-body');
-  body.innerHTML = `
+
+  const badgeRows = newlyEarnedBadges.map(b => `
+    <div class="recap-badge-row">
+      <div class="rb-emoji">${b.emoji}</div>
+      <div class="rb-txt"><b>Badge débloqué : ${b.name}</b><span>${b.desc}</span></div>
+    </div>`).join('');
+
+  const prCard = prs.length ? `
+    <div class="recap-badge-row" style="background:rgba(var(--accent-rgb),0.12);border-color:var(--accent)">
+      <div class="rb-emoji">🎉</div>
+      <div class="rb-txt"><b>${prs.length === 1 ? 'Nouveau record !' : prs.length + ' nouveaux records !'}</b><span>${prs.map(p => `${p.name} : ${p.weight} kg`).join(' · ')}</span></div>
+    </div>` : '';
+
+  const cardioPrCard = cardioPrs.length ? `
+    <div class="recap-badge-row" style="background:rgba(var(--accent2-rgb),0.12);border-color:var(--accent2)">
+      <div class="rb-emoji">🎉</div>
+      <div class="rb-txt"><b>Nouveau record !</b><span>${cardioPrs.join(' · ')}</span></div>
+    </div>` : '';
+
+  const statsHtml = isCardio ? `
+    <div class="streak-row" style="margin:0 0 16px">
+      <div class="stat-pill"><div class="val">${formatDuration(session.duration)}</div><div class="lbl">Durée</div></div>
+      <div class="stat-pill"><div class="val">${session.distanceKm ? session.distanceKm + ' km' : '–'}</div><div class="lbl">Distance</div></div>
+      <div class="stat-pill"><div class="val" style="font-size:15px">${session.intensity || '–'}</div><div class="lbl">Intensité</div></div>
+    </div>` : `
     <div class="streak-row" style="margin:0 0 16px">
       <div class="stat-pill"><div class="val">${formatDuration(session.duration)}</div><div class="lbl">Durée</div></div>
       <div class="stat-pill"><div class="val">${session.exercises.length}</div><div class="lbl">Exercices</div></div>
       <div class="stat-pill"><div class="val">${vol > 0 ? vol.toLocaleString('fr') : '0'}</div><div class="lbl">Volume (kg)</div></div>
-    </div>
-    ${session.notes ? `<div class="card" style="margin:0 0 14px"><div class="card-title" style="margin-bottom:6px">Notes</div><div style="font-size:14px">${session.notes}</div></div>` : ''}
-    ${session.exercises.map(ex => {
-      const validSets = ex.sets.filter(st => st.weight || st.reps);
-      return `<div class="history-exercise" style="margin-bottom:14px">
-        <div class="history-exercise-name">${ex.name}</div>
-        <div>${validSets.map((st,i) => `<span class="set-chip" ${st.warmup?'style="opacity:0.55"':''}>${st.warmup?'🔥 ':''}S${i+1}: ${st.weight||'–'} kg × ${st.reps||'–'}</span>`).join('')}</div>
-      </div>`;
-    }).join('')}
+    </div>`;
+
+  const detailsHtml = isCardio
+    ? `<div style="text-align:center;color:var(--text2);font-size:14px;font-weight:600;padding:4px 0 14px">${cardioTypeIcon(session.sportType)} ${session.sportType}</div>
+       ${session.notes ? `<div class="card" style="margin:0 0 14px"><div class="card-title" style="margin-bottom:6px">Notes</div><div style="font-size:14px">${session.notes}</div></div>` : ''}`
+    : `${session.notes ? `<div class="card" style="margin:0 0 14px"><div class="card-title" style="margin-bottom:6px">Notes</div><div style="font-size:14px">${session.notes}</div></div>` : ''}
+       ${session.exercises.map(ex => {
+         const validSets = ex.sets.filter(st => st.weight || st.reps);
+         return `<div class="history-exercise" style="margin-bottom:14px">
+           <div class="history-exercise-name">${ex.name}</div>
+           <div>${validSets.map((st,i) => `<span class="set-chip" ${st.warmup?'style="opacity:0.55"':''}>${st.warmup?'🔥 ':''}S${i+1}: ${st.weight||'–'} kg × ${st.reps||'–'}</span>`).join('')}</div>
+         </div>`;
+       }).join('')}`;
+
+  body.innerHTML = `
+    ${badgeRows}
+    ${prCard}
+    ${cardioPrCard}
+    ${statsHtml}
+    ${detailsHtml}
     ${db.sessions.length > 0 && db.sessions.length % 10 === 0 ? `
       <div class="card" style="margin-top:8px;border-color:var(--accent2)">
         <div style="font-size:13px;color:var(--text2);margin-bottom:10px">💾 Ça fait ${db.sessions.length} séances enregistrées — pense à sauvegarder tes données.</div>
         <button class="btn btn-secondary btn-sm btn-full" onclick="closeRecap();exportData();openSyncModal()">Copier le code de sauvegarde</button>
       </div>` : ''}
   `;
-  showToast('Séance sauvegardée !');
+  showToast(isCardio ? 'Séance cardio enregistrée !' : 'Séance sauvegardée !');
   openModal('modal-recap');
 }
 
 function closeRecap() {
   closeModal('modal-recap');
+}
+
+// ==================== BILAN MENSUEL "WRAPPED" ====================
+let wrappedMonthOffset = 0;
+let wrappedCardIndex = 0;
+
+function getWrappedMonthBounds(offset) {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const start = new Date(d.getFullYear(), d.getMonth(), 1);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  return { start, end, label };
+}
+
+function computeWrappedData(offset) {
+  const { start, end } = getWrappedMonthBounds(offset);
+  const sessions = db.sessions.filter(s => { const t = new Date(s.date); return t >= start && t < end; });
+  const strengthSessions = sessions.filter(s => s.type !== 'cardio');
+  const cardioSessions = sessions.filter(s => s.type === 'cardio');
+
+  const totalVolume = strengthSessions.reduce((a, s) => a + calcVolume(s), 0);
+  const totalCardioKm = cardioSessions.reduce((a, s) => a + (parseFloat(s.distanceKm) || 0), 0);
+  const totalCardioDuration = cardioSessions.reduce((a, s) => a + (s.duration || 0), 0);
+
+  // Groupe musculaire dominant : compte des séries valides par groupe.
+  const groupCounts = {};
+  strengthSessions.forEach(s => s.exercises.forEach(ex => {
+    const g = getMuscleGroup(ex.name);
+    const validSets = ex.sets.filter(st => st.done && !st.warmup).length;
+    groupCounts[g] = (groupCounts[g] || 0) + validSets;
+  }));
+  let topGroup = null, topGroupCount = 0;
+  Object.entries(groupCounts).forEach(([g, c]) => { if (c > topGroupCount) { topGroup = g; topGroupCount = c; } });
+
+  // Records battus ce mois-ci (renfo + cardio), mêmes détecteurs que le récap
+  // de fin de séance / la page Progrès.
+  let prCount = 0;
+  strengthSessions.forEach(s => { prCount += computeNewPRsForSession(s).length; });
+  cardioSessions.forEach(s => { prCount += computeCardioPRsForSession(s).length; });
+
+  // Comparaison avec le mois précédent
+  const prevBounds = getWrappedMonthBounds(offset - 1);
+  const prevCount = db.sessions.filter(s => { const t = new Date(s.date); return t >= prevBounds.start && t < prevBounds.end; }).length;
+
+  return { sessionsCount: sessions.length, strengthCount: strengthSessions.length, cardioCount: cardioSessions.length,
+    totalVolume, totalCardioKm, totalCardioDuration, topGroup, topGroupCount, prCount, prevCount };
+}
+
+function buildWrappedCards(data, monthLabel) {
+  const cards = [];
+  cards.push({
+    emoji: '📅', value: data.sessionsCount, label: `séance${data.sessionsCount>1?'s':''} en ${monthLabel}`,
+    sub: data.sessionsCount ? `${data.strengthCount} renfo · ${data.cardioCount} cardio` : "Aucune séance ce mois-ci — on s'y remet ?"
+  });
+  if (!data.sessionsCount) return cards; // rien d'autre à raconter pour un mois vide
+
+  if (data.totalVolume > 0) {
+    cards.push({ emoji: '🏋️', value: data.totalVolume.toLocaleString('fr') + ' kg', label: 'de volume soulevé', sub: 'Renfo cumulé sur le mois' });
+  }
+  if (data.cardioCount > 0) {
+    cards.push({
+      emoji: '🏃',
+      value: data.totalCardioKm > 0 ? data.totalCardioKm.toFixed(1) + ' km' : formatDuration(data.totalCardioDuration),
+      label: data.totalCardioKm > 0 ? 'parcourus en cardio' : 'de cardio cumulés',
+      sub: data.totalCardioKm > 0 ? formatDuration(data.totalCardioDuration) + ' au total' : `${data.cardioCount} séance${data.cardioCount>1?'s':''}`
+    });
+  }
+  if (data.topGroup) {
+    cards.push({ emoji: '🎯', value: data.topGroup, label: 'groupe le plus travaillé', sub: `${data.topGroupCount} série${data.topGroupCount>1?'s':''} ce mois-ci` });
+  }
+  cards.push(
+    data.prCount > 0
+      ? { emoji: '🎉', value: data.prCount, label: `record${data.prCount>1?'s':''} personnel${data.prCount>1?'s':''} battu${data.prCount>1?'s':''}`, sub: 'Continue comme ça !' }
+      : { emoji: '💪', value: '—', label: 'aucun record battu ce mois-ci', sub: 'La régularité paie toujours, garde le rythme' }
+  );
+  const delta = data.prevCount > 0 ? Math.round(((data.sessionsCount - data.prevCount) / data.prevCount) * 100) : null;
+  cards.push({
+    emoji: delta === null || data.sessionsCount >= data.prevCount ? '📈' : '📉',
+    value: delta !== null ? (delta >= 0 ? '+' : '') + delta + '%' : data.sessionsCount,
+    label: delta !== null ? 'de séances vs le mois précédent' : 'séances ce mois-ci',
+    sub: `${monthLabel}, à bientôt pour la suite 👋`
+  });
+  return cards;
+}
+
+function updateWrappedActiveCard() {
+  document.querySelectorAll('#wrapped-cards .wrapped-card').forEach((el, i) => el.classList.toggle('active', i === wrappedCardIndex));
+  document.querySelectorAll('#wrapped-dots .wrapped-dot').forEach((el, i) => {
+    el.classList.toggle('current', i === wrappedCardIndex);
+    el.classList.toggle('past', i < wrappedCardIndex);
+  });
+}
+
+function wrappedNextCard() {
+  const total = document.querySelectorAll('#wrapped-cards .wrapped-card').length;
+  if (wrappedCardIndex < total - 1) { wrappedCardIndex++; updateWrappedActiveCard(); }
+  else closeWrapped();
+}
+
+function wrappedPrevCard() {
+  if (wrappedCardIndex > 0) { wrappedCardIndex--; updateWrappedActiveCard(); }
+}
+
+function renderWrapped() {
+  const { label } = getWrappedMonthBounds(wrappedMonthOffset);
+  document.getElementById('wrapped-month-label').textContent = label;
+  document.getElementById('wrapped-next-btn').style.visibility = wrappedMonthOffset >= 0 ? 'hidden' : 'visible';
+
+  const data = computeWrappedData(wrappedMonthOffset);
+  const cards = buildWrappedCards(data, label);
+
+  const cardsContainer = document.getElementById('wrapped-cards');
+  cardsContainer.querySelectorAll('.wrapped-card').forEach(el => el.remove());
+  cards.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'wrapped-card' + (i === 0 ? ' active' : '');
+    div.innerHTML = `<div class="wc-emoji">${c.emoji}</div><div class="wc-value">${c.value}</div><div class="wc-label">${c.label}</div>${c.sub ? `<div class="wc-sub">${c.sub}</div>` : ''}`;
+    cardsContainer.appendChild(div);
+  });
+
+  document.getElementById('wrapped-dots').innerHTML = cards.map((_, i) => `<div class="wrapped-dot ${i===0?'current':''}"></div>`).join('');
+  wrappedCardIndex = 0;
+}
+
+function openWrapped() {
+  wrappedMonthOffset = 0;
+  renderWrapped();
+  document.getElementById('wrapped-overlay').classList.add('active');
+}
+
+function closeWrapped() {
+  document.getElementById('wrapped-overlay').classList.remove('active');
+}
+
+function shiftWrappedMonth(delta) {
+  const next = wrappedMonthOffset + delta;
+  if (next > 0) return; // pas de mois futur
+  wrappedMonthOffset = next;
+  renderWrapped();
 }
 
 // ==================== LOG RAPIDE (Cardio) ====================
@@ -2448,10 +2819,11 @@ function saveQuickLog() {
   // Cardio de l'accueil) ne doit pas la faire avancer toute seule.
   advanceProgram(quickLogTemplateId);
   quickLogTemplateId = null;
+  const newlyEarnedBadges = checkBadges();
 
   closeModal('modal-quicklog');
   renderHome();
-  showToast('Séance enregistrée !');
+  showRecap(session, newlyEarnedBadges);
 }
 
 // ==================== PRÉFÉRENCES MINUTEUR DE REPOS ====================
@@ -3843,6 +4215,7 @@ applyTheme(localStorage.getItem('fittrack_theme') || 'dark');
 applyUserName();
 loadDB();
 loadRestPrefs();
+checkBadges(); // backfill silencieux des badges déjà mérités par l'historique existant
 renderHome();
 handleQuickLaunch();
 
