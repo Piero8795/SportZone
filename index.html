@@ -928,6 +928,37 @@ let timerStart = null;
 let currentTemplateEdit = null;
 let progressChart = null;
 
+// Deux noms d'exercice tapés avec une casse ou des accents différents
+// ("Développé couché" / "développé couché" / "DEVELOPPE COUCHE") doivent être
+// traités comme le MÊME exercice partout : historique, suggestions, PR,
+// graphique de progression, répartition par groupe musculaire...
+function normalizeExerciseName(str) {
+  return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+}
+function sameExercise(a, b) {
+  const na = normalizeExerciseName(a);
+  return !!na && na === normalizeExerciseName(b);
+}
+// Regroupe une liste de noms (potentiellement en plusieurs variantes casse/accents)
+// en une liste de noms canoniques uniques : la variante connue de KNOWN_EXERCISES
+// si elle existe, sinon la variante la plus utilisée.
+function canonicalExerciseNames(names) {
+  const groups = {};
+  names.forEach(n => {
+    const key = normalizeExerciseName(n);
+    if (!key) return;
+    if (!groups[key]) groups[key] = {};
+    groups[key][n] = (groups[key][n] || 0) + 1;
+  });
+  const knownByNorm = {};
+  KNOWN_EXERCISES.forEach(n => { knownByNorm[normalizeExerciseName(n)] = n; });
+  return Object.keys(groups).map(key => {
+    if (knownByNorm[key]) return knownByNorm[key];
+    const variants = Object.entries(groups[key]).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    return variants[0][0];
+  }).sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
 const KNOWN_EXERCISES = [
   // Pectoraux
   'Développé couché', 'Développé couché haltères', 'Développé incliné', 'Développé incliné haltères',
@@ -1021,24 +1052,29 @@ const EXERCISE_GROUPS = {
     'Wall ball', 'Battle rope', 'Sled push', 'Farmer walk', 'Épaulé-jeté', 'Arraché']
 };
 const EXERCISE_TO_GROUP = {};
+const EXERCISE_TO_GROUP_NORM = {};
 Object.entries(EXERCISE_GROUPS).forEach(([group, names]) => {
-  names.forEach(n => { EXERCISE_TO_GROUP[n] = group; });
+  names.forEach(n => { EXERCISE_TO_GROUP[n] = group; EXERCISE_TO_GROUP_NORM[normalizeExerciseName(n)] = group; });
 });
-// Repli par mots-clés pour les exercices personnalisés non répertoriés
+// Repli par mots-clés pour les exercices personnalisés non répertoriés. Les
+// motifs sont volontairement écrits SANS accents : le nom est normalisé
+// (minuscule + accents retirés, cf normalizeExerciseName) avant le test, donc
+// "Développé", "developpe" et "DÉVELOPPÉ" matchent tous les trois pareil.
 const GROUP_KEYWORDS = [
-  [/squat|leg|jambe|fente|mollet|calf|ischio|quadri/i, 'Jambes'],
-  [/hip thrust|glute|fessier/i, 'Fessiers'],
-  [/développé|bench|pec|pompe|dips?\b|écarté|chest/i, 'Pectoraux'],
-  [/traction|pull|row|rowing|dos|deadlift|soulevé|shrug/i, 'Dos'],
-  [/épaule|shoulder|militaire|élévation|oiseau|arnold/i, 'Épaules'],
-  [/curl|biceps/i, 'Biceps'],
-  [/triceps|skull|kickback/i, 'Triceps'],
-  [/crunch|gainage|abdo|planche|ab wheel|russian twist/i, 'Abdominaux'],
-  [/burpee|corde|rameur|vélo|tapis|assault|kettlebell|battle rope|sled|farmer|clean|snatch|thruster/i, 'Cardio / Fonctionnel']
+  [/squat|leg|jambe|fente|mollet|calf|ischio|quadri/, 'Jambes'],
+  [/hip thrust|glute|fessier/, 'Fessiers'],
+  [/developpe|bench|pec|pompe|dips?\b|ecarte|chest/, 'Pectoraux'],
+  [/traction|pull|row|rowing|dos|deadlift|souleve|shrug/, 'Dos'],
+  [/epaule|shoulder|militaire|elevation|oiseau|arnold/, 'Épaules'],
+  [/curl|biceps/, 'Biceps'],
+  [/triceps|skull|kickback/, 'Triceps'],
+  [/crunch|gainage|abdo|planche|ab wheel|russian twist/, 'Abdominaux'],
+  [/burpee|corde|rameur|velo|tapis|assault|kettlebell|battle rope|sled|farmer|clean|snatch|thruster/, 'Cardio / Fonctionnel']
 ];
 function getMuscleGroup(name) {
-  if (EXERCISE_TO_GROUP[name]) return EXERCISE_TO_GROUP[name];
-  for (const [re, group] of GROUP_KEYWORDS) if (re.test(name)) return group;
+  const norm = normalizeExerciseName(name);
+  if (EXERCISE_TO_GROUP_NORM[norm]) return EXERCISE_TO_GROUP_NORM[norm];
+  for (const [re, group] of GROUP_KEYWORDS) if (re.test(norm)) return group;
   return 'Autre';
 }
 
@@ -1080,7 +1116,7 @@ function navigate(view) {
 // ==================== HOME ====================
 function renderHome() {
   const now = new Date();
-  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1); weekStart.setHours(0,0,0,0);
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
   const thisWeek = db.sessions.filter(s => new Date(s.date) >= weekStart).length;
   let streak = 0;
   const days = [...new Set(db.sessions.map(s => new Date(s.date).toDateString()))].sort((a,b) => new Date(b)-new Date(a));
@@ -1189,7 +1225,7 @@ function computeNewPRsForSession(session) {
     if (sessionMax <= 0) return;
     let priorBest = 0;
     prior.forEach(s => {
-      const pex = s.exercises.find(e => e.name === ex.name);
+      const pex = s.exercises.find(e => sameExercise(e.name, ex.name));
       if (!pex) return;
       pex.sets.forEach(st => { if (st.done && !st.warmup) priorBest = Math.max(priorBest, parseFloat(st.weight) || 0); });
     });
@@ -1499,7 +1535,7 @@ function getExerciseHistory(exerciseName, limit) {
   const sessions = [...db.sessions].sort((a,b) => new Date(b.date) - new Date(a.date));
   const result = [];
   for (const s of sessions) {
-    const ex = s.exercises.find(e => e.name === exerciseName);
+    const ex = s.exercises.find(e => sameExercise(e.name, exerciseName));
     if (!ex) continue;
     // Ne garde que les séries réellement cochées "faites" (ignore les entrées
     // pré-remplies jamais validées, ex: reste de l'ancien auto-ajout de série)
@@ -1613,7 +1649,7 @@ function syncTemplateWithSession(session) {
   if (!tmpl) return;
   session.exercises.forEach(ex => {
     if (ex.progression === false) return;
-    const tmplEx = tmpl.exercises.find(e => typeof e === 'object' && e.name === ex.name);
+    const tmplEx = tmpl.exercises.find(e => typeof e === 'object' && sameExercise(e.name, ex.name));
     if (!tmplEx || tmplEx.progression === false) return;
     const history = getExerciseHistory(ex.name, 2).map(workingSetsOf);
     const suggestion = suggestNextTarget(history);
@@ -2232,7 +2268,7 @@ function deleteSession(id) {
 
 // ==================== PROGRESS ====================
 function renderProgress() {
-  const allExercises = [...new Set(db.sessions.flatMap(s => s.exercises.map(e => e.name)))].sort();
+  const allExercises = canonicalExerciseNames(db.sessions.flatMap(s => s.exercises.map(e => e.name)));
   const sel = document.getElementById('progress-exercise-select');
   const currentVal = sel.value;
   sel.innerHTML = '<option value="">-- Choisir un exercice --</option>' +
@@ -2310,7 +2346,7 @@ function renderVolumeByGroup() {
   const card = document.getElementById('vol-group-card');
   const body = document.getElementById('vol-group-body');
   const now = new Date();
-  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1); weekStart.setHours(0,0,0,0);
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
 
   const volByGroup = {};
   db.sessions.forEach(s => {
@@ -2433,7 +2469,7 @@ function renderPRGrid(exercises) {
     let best = { weight: 0, reps: 0, e1rm: 0 };
     const perSession = [];
     db.sessions.forEach(s => {
-      const ex = s.exercises.find(e => e.name === name);
+      const ex = s.exercises.find(e => sameExercise(e.name, name));
       if (!ex) return;
       let sessionMaxW = 0;
       ex.sets.forEach(st => {
@@ -2486,10 +2522,10 @@ function renderProgressChart() {
   if (!name) { wrapper.style.display = 'none'; return; }
 
   const points = [];
-  db.sessions.filter(s => s.exercises.some(e=>e.name===name))
+  db.sessions.filter(s => s.exercises.some(e=>sameExercise(e.name,name)))
     .sort((a,b) => new Date(a.date)-new Date(b.date))
     .forEach(s => {
-      const ex = s.exercises.find(e=>e.name===name);
+      const ex = s.exercises.find(e=>sameExercise(e.name,name));
       if (!ex) return;
       const working = ex.sets.filter(st => !st.warmup && st.done);
       if (!working.length) return;
