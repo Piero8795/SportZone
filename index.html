@@ -395,7 +395,7 @@
     <!-- HOME -->
     <div class="view active" id="home-view">
       <div class="home-hero">
-        <h1><span class="hero-emoji" id="greeting-emoji">💪</span> Bonjour<br><span class="hero-name" id="greeting-name">Piero</span></h1>
+        <h1><span class="hero-emoji" id="greeting-emoji">💪</span> <span id="greeting-word">Bonjour</span><br><span class="hero-name" id="greeting-name">Piero</span></h1>
         <p id="home-subtitle">Prêt pour la séance ?</p>
       </div>
       <div id="pr-banner"></div>
@@ -431,7 +431,7 @@
       </div>
       <div style="display:flex;gap:10px;margin:0 16px 16px">
         <button class="btn btn-secondary btn-sm" style="flex:1;display:none" id="home-repeat-btn" onclick="startQuickRepeat()">⚡ Répéter</button>
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openQuickLog()">🤾 Handball / Cardio</button>
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openQuickLog()">🏃 Cardio</button>
       </div>
       <p class="section-title">Dernières séances</p>
       <div id="recent-sessions-list">
@@ -493,6 +493,11 @@
       <div class="card" id="vol-group-card" style="display:none">
         <div class="card-title" style="margin-bottom:12px">Volume cette semaine par groupe</div>
         <div id="vol-group-body"></div>
+      </div>
+
+      <div class="card" id="cardio-progress-card" style="display:none">
+        <div class="card-title" style="margin-bottom:12px">Cardio</div>
+        <div id="cardio-progress-body"></div>
       </div>
 
       <div class="card" id="bw-card">
@@ -792,7 +797,7 @@
   </div>
 </div>
 
-<!-- MODAL: Log rapide Handball / Cardio -->
+<!-- MODAL: Log rapide Cardio -->
 <div class="modal-overlay" id="modal-quicklog">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -805,12 +810,12 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Type</label>
-        <select class="form-input" id="quicklog-type">
-          <option value="Handball">Handball</option>
-          <option value="Handfit">Handfit</option>
-          <option value="Cardio">Cardio</option>
-          <option value="Autre">Autre</option>
+        <select class="form-input" id="quicklog-type" onchange="onQuickLogTypeChange()">
         </select>
+      </div>
+      <div class="form-group" id="quicklog-custom-type-group" style="display:none">
+        <label class="form-label">Précise le type</label>
+        <input class="form-input" id="quicklog-custom-type" type="text" placeholder="Handball, Escalade, Boxe…">
       </div>
       <div class="row">
         <div class="form-group">
@@ -818,17 +823,21 @@
           <input class="form-input" id="quicklog-duration" type="number" inputmode="numeric" min="0" placeholder="60">
         </div>
         <div class="form-group">
-          <label class="form-label">Intensité</label>
-          <select class="form-input" id="quicklog-intensity">
-            <option value="Faible">Faible</option>
-            <option value="Moyenne" selected>Moyenne</option>
-            <option value="Élevée">Élevée</option>
-          </select>
+          <label class="form-label">Distance (km)</label>
+          <input class="form-input" id="quicklog-distance" type="number" inputmode="decimal" min="0" step="0.1" placeholder="10">
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">Intensité</label>
+        <select class="form-input" id="quicklog-intensity">
+          <option value="Faible">Faible</option>
+          <option value="Moyenne" selected>Moyenne</option>
+          <option value="Élevée">Élevée</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label class="form-label">Notes (optionnel)</label>
-        <textarea class="form-input" id="quicklog-notes" rows="2" placeholder="Match, entraînement…" style="resize:none"></textarea>
+        <textarea class="form-input" id="quicklog-notes" rows="2" placeholder="Parcours, sensations…" style="resize:none"></textarea>
       </div>
     </div>
     <div class="modal-footer">
@@ -1206,6 +1215,7 @@ function renderHome() {
   document.querySelector('.streak-pill').classList.toggle('active-streak', streak > 0);
 
   const h = now.getHours();
+  document.getElementById('greeting-word').textContent = h < 18 ? 'Bonjour' : 'Bonsoir';
   document.getElementById('home-subtitle').textContent = h < 12 ? 'Bonne matinée !' : h < 18 ? 'Bonne après-midi !' : 'Bonne soirée !';
   document.getElementById('greeting-emoji').textContent = h < 12 ? '☀️' : h < 18 ? '💪' : '🌙';
 
@@ -1229,11 +1239,11 @@ function renderHome() {
     const vol = calcVolume(s);
     const isCardio = s.type === 'cardio';
     const exNames = isCardio
-      ? [s.intensity, s.duration ? formatDuration(s.duration) : ''].filter(Boolean).join(' · ')
+      ? [s.intensity, s.duration ? formatDuration(s.duration) : '', s.distanceKm ? s.distanceKm + ' km' : ''].filter(Boolean).join(' · ')
       : s.exercises.map(e=>e.name).join(', ');
     return `<div class="recent-session" onclick="navigate('history')">
       <div>
-        <div class="session-name">${isCardio ? '🤾 ' : ''}${s.name}</div>
+        <div class="session-name">${isCardio ? '🏃 ' : ''}${s.name}</div>
         <div class="session-meta">${formatDate(s.date)} · ${isCardio ? (s.sportType||'Cardio') : s.exercises.length + ' exercice' + (s.exercises.length>1?'s':'')}</div>
         <div class="session-meta" style="margin-top:2px;color:var(--text2);font-size:11px">${exNames.length>40?exNames.slice(0,40)+'…':exNames}</div>
       </div>
@@ -2106,19 +2116,45 @@ function closeRecap() {
   closeModal('modal-recap');
 }
 
-// ==================== LOG RAPIDE (Handball / Cardio) ====================
+// ==================== LOG RAPIDE (Cardio) ====================
+const CARDIO_TYPES_BASE = ['Vélo', 'Rameur', 'Course à pied', 'Nage'];
+const CARDIO_TYPE_OTHER = '__autre__';
+
+// Types de base + tout type personnalisé déjà utilisé par le passé (appris de
+// l'historique, donc réutilisable sans avoir à le retaper à chaque fois).
+function getCardioTypeOptions() {
+  const used = [...new Set(db.sessions.filter(s => s.type === 'cardio').map(s => s.sportType))]
+    .filter(t => t && !CARDIO_TYPES_BASE.includes(t));
+  return [...CARDIO_TYPES_BASE, ...used.sort((a,b) => a.localeCompare(b, 'fr'))];
+}
+
+function onQuickLogTypeChange() {
+  const isOther = document.getElementById('quicklog-type').value === CARDIO_TYPE_OTHER;
+  document.getElementById('quicklog-custom-type-group').style.display = isOther ? 'block' : 'none';
+}
+
 function openQuickLog() {
   if (activeSession) { showToast('Termine ta séance en cours avant d\'en logger une autre'); return; }
   document.getElementById('quicklog-duration').value = '';
+  document.getElementById('quicklog-distance').value = '';
   document.getElementById('quicklog-notes').value = '';
   document.getElementById('quicklog-intensity').value = 'Moyenne';
-  document.getElementById('quicklog-type').value = 'Handball';
+  document.getElementById('quicklog-custom-type').value = '';
+  const select = document.getElementById('quicklog-type');
+  select.innerHTML = getCardioTypeOptions().map(t => `<option value="${t}">${t}</option>`).join('') +
+    `<option value="${CARDIO_TYPE_OTHER}">Autres…</option>`;
+  select.value = CARDIO_TYPES_BASE[0];
+  onQuickLogTypeChange();
   openModal('modal-quicklog');
 }
 
 function saveQuickLog() {
-  const sportType = document.getElementById('quicklog-type').value;
+  const selected = document.getElementById('quicklog-type').value;
+  const customType = document.getElementById('quicklog-custom-type').value.trim();
+  if (selected === CARDIO_TYPE_OTHER && !customType) { showToast('Précise le type de cardio'); return; }
+  const sportType = selected === CARDIO_TYPE_OTHER ? customType : selected;
   const durationMin = parseInt(document.getElementById('quicklog-duration').value) || 0;
+  const distanceKm = parseFloat(document.getElementById('quicklog-distance').value) || 0;
   const intensity = document.getElementById('quicklog-intensity').value;
   const notes = document.getElementById('quicklog-notes').value.trim();
 
@@ -2129,6 +2165,7 @@ function saveQuickLog() {
     type: 'cardio',
     sportType,
     duration: durationMin * 60,
+    distanceKm,
     intensity,
     notes,
     exercises: []
@@ -2292,12 +2329,12 @@ function renderHistory() {
     const vol = isCardio ? 0 : calcVolume(s);
     const totalSets = isCardio ? 0 : s.exercises.reduce((a,e) => a + e.sets.filter(st=>st.done||st.weight||st.reps).length, 0);
     const metaLine = isCardio
-      ? [s.intensity, s.duration ? formatDuration(s.duration) : ''].filter(Boolean).join(' · ')
+      ? [s.intensity, s.duration ? formatDuration(s.duration) : '', s.distanceKm ? s.distanceKm + ' km' : ''].filter(Boolean).join(' · ')
       : `${s.exercises.length} exercice${s.exercises.length>1?'s':''} · ${totalSets} série${totalSets>1?'s':''}${s.duration ? ' · ' + formatDuration(s.duration) : ''}`;
     return `<div class="history-item" onclick="toggleHistory('${s.id}')">
       <div class="history-summary">
         <div>
-          <div class="session-name">${isCardio ? '🤾 ' : ''}${s.name}</div>
+          <div class="session-name">${isCardio ? '🏃 ' : ''}${s.name}</div>
           <div class="session-meta">${formatDate(s.date)} · ${metaLine}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -2345,6 +2382,7 @@ function renderProgress() {
 
   renderTotalVolumeChart();
   renderVolumeByGroup();
+  renderCardioProgress();
   renderBodyweightSection();
 
   // PR grid
@@ -2458,6 +2496,50 @@ function renderVolumeByGroup() {
       <div class="vol-bar-track"><div class="vol-bar-fill" style="width:${Math.max(4, Math.round(vol/max*100))}%"></div></div>
       ${group === 'Autre' ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">${[...namesByGroup[group]].join(', ')}</div>` : ''}
     </div>`).join('');
+}
+
+// ==================== CARDIO (Progression) ====================
+const CARDIO_TYPE_ICONS = { 'Vélo': '🚴', 'Rameur': '🚣', 'Course à pied': '🏃', 'Nage': '🏊' };
+function cardioTypeIcon(type) { return CARDIO_TYPE_ICONS[type] || '🤸'; }
+
+// Pour chaque type de cardio pratiqué : le record de durée et de distance
+// (la "progression", comme un PR en muscu), et en complément la moyenne des
+// 3 dernières séances pour avoir une référence récente.
+function renderCardioProgress() {
+  const card = document.getElementById('cardio-progress-card');
+  const body = document.getElementById('cardio-progress-body');
+  const cardioSessions = db.sessions.filter(s => s.type === 'cardio');
+  if (!cardioSessions.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const types = [...new Set(cardioSessions.map(s => s.sportType))].sort((a,b) => a.localeCompare(b, 'fr'));
+  body.innerHTML = types.map(type => {
+    const sessions = cardioSessions.filter(s => s.sportType === type).sort((a,b) => new Date(a.date) - new Date(b.date));
+    const latest = sessions[sessions.length - 1];
+
+    const bestDuration = sessions.reduce((best, s) => (s.duration||0) > (best?.duration||0) ? s : best, null);
+    const distSessions = sessions.filter(s => s.distanceKm > 0);
+    const bestDistance = distSessions.length ? distSessions.reduce((best, s) => s.distanceKm > best.distanceKm ? s : best) : null;
+
+    const isNewDurationRecord = sessions.length > 1 && bestDuration && bestDuration.id === latest.id;
+    const isNewDistanceRecord = distSessions.length > 1 && bestDistance && bestDistance.id === latest.id;
+
+    const last3 = sessions.slice(-3);
+    const avgDurationSec = last3.reduce((a, s) => a + (s.duration||0), 0) / last3.length;
+    const last3Dist = last3.filter(s => s.distanceKm > 0);
+    const avgDistance = last3Dist.length ? last3Dist.reduce((a, s) => a + s.distanceKm, 0) / last3Dist.length : null;
+
+    const recordLines = [
+      bestDuration ? `<div>🏆 Record durée : <b>${formatDuration(bestDuration.duration)}</b> <span style="color:var(--text2)">(${formatDate(bestDuration.date)})</span>${isNewDurationRecord ? ' <span style="color:var(--accent);font-weight:700">· nouveau !</span>' : ''}</div>` : '',
+      bestDistance ? `<div>🏆 Record distance : <b>${bestDistance.distanceKm} km</b> <span style="color:var(--text2)">(${formatDate(bestDistance.date)})</span>${isNewDistanceRecord ? ' <span style="color:var(--accent);font-weight:700">· nouveau !</span>' : ''}</div>` : ''
+    ].filter(Boolean).join('');
+
+    return `<div class="vol-bar-row" style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px">${cardioTypeIcon(type)} ${type}</div>
+      <div style="font-size:13px;line-height:1.6">${recordLines}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">Moyenne (${last3.length} dernière${last3.length>1?'s':''} séance${last3.length>1?'s':''}) : ${formatDuration(avgDurationSec)}${avgDistance ? ' · ' + avgDistance.toFixed(1) + ' km' : ''}</div>
+    </div>`;
+  }).join('');
 }
 
 // ==================== POIDS DE CORPS ====================
@@ -3155,17 +3237,17 @@ function importData() {
 // ==================== EXPORT CSV ====================
 function exportCSV() {
   if (!db.sessions.length) { showToast('Aucune séance à exporter'); return; }
-  const rows = [['Date','Type','Séance','Exercice','Série','Poids (kg)','Reps','Échauffement','Faite','Durée (min)','Intensité']];
+  const rows = [['Date','Type','Séance','Exercice','Série','Poids (kg)','Reps','Échauffement','Faite','Durée (min)','Intensité','Distance (km)']];
   [...db.sessions].sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(s => {
     const dateStr = new Date(s.date).toLocaleDateString('fr-FR');
     if (s.type === 'cardio') {
-      rows.push([dateStr, 'Cardio', s.name, s.sportType || '', '', '', '', '', '', s.duration ? Math.round(s.duration/60) : '', s.intensity || '']);
+      rows.push([dateStr, 'Cardio', s.name, s.sportType || '', '', '', '', '', '', s.duration ? Math.round(s.duration/60) : '', s.intensity || '', s.distanceKm || '']);
       return;
     }
     s.exercises.forEach(ex => {
       ex.sets.forEach((st, i) => {
         if (!st.weight && !st.reps) return;
-        rows.push([dateStr, 'Musculation', s.name, ex.name, i+1, st.weight || '', st.reps || '', st.warmup ? 'Oui' : 'Non', st.done ? 'Oui' : 'Non', '', '']);
+        rows.push([dateStr, 'Musculation', s.name, ex.name, i+1, st.weight || '', st.reps || '', st.warmup ? 'Oui' : 'Non', st.done ? 'Oui' : 'Non', '', '', '']);
       });
     });
   });
@@ -3345,7 +3427,7 @@ function showToast(msg) {
 // ==================== LANCEMENT RAPIDE (raccourci iOS) ====================
 // Un raccourci "Ouvrir l'URL" (app Raccourcis, ajouté à l'écran d'accueil) vers
 // index.html?action=start ouvre directement la modale de nouvelle séance, et
-// ?action=quicklog ouvre directement le log rapide Handball/Cardio — sans
+// ?action=quicklog ouvre directement le log rapide Cardio — sans
 // naviguer manuellement dans l'appli.
 function handleQuickLaunch() {
   const params = new URLSearchParams(window.location.search);
