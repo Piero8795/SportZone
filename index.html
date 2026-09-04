@@ -503,9 +503,10 @@
       </div>
 
       <div class="exercise-selector">
-        <select class="form-input" id="progress-exercise-select" onchange="renderProgressChart()">
+        <select class="form-input" id="progress-exercise-select" onchange="onProgressExerciseChange()">
           <option value="">-- Choisir un exercice --</option>
         </select>
+        <button class="btn btn-secondary btn-sm" id="merge-exercise-btn" style="display:none;margin-top:8px;width:100%" onclick="openMergeExerciseModal()">🔀 Fusionner avec un autre exercice</button>
       </div>
       <div class="chart-container" id="chart-wrapper" style="display:none">
         <div class="card-title" style="margin-bottom:12px">Poids max par séance</div>
@@ -743,6 +744,34 @@
   </div>
 </div>
 
+<!-- MODAL: Fusionner deux exercices -->
+<div class="modal-overlay" id="modal-merge-exercise">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Fusionner un exercice</h3>
+      <button class="btn-icon" onclick="closeModal('modal-merge-exercise')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Toutes les séances et templates contenant "<strong id="merge-source-name"></strong>" seront renommés vers le nom choisi ci-dessous, pour que l'historique et les records ne soient plus séparés en deux.</p>
+      <div class="form-group">
+        <label class="form-label">Fusionner avec un exercice existant</label>
+        <select class="form-input" id="merge-target-select"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ou taper le nom à conserver</label>
+        <input type="text" class="form-input" id="merge-target-custom" list="merge-target-suggestions" placeholder="Nom exact à conserver">
+        <datalist id="merge-target-suggestions"></datalist>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-full" onclick="confirmMergeExercise()">Fusionner</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Log rapide Handball / Cardio -->
 <div class="modal-overlay" id="modal-quicklog">
   <div class="modal">
@@ -968,6 +997,7 @@ const KNOWN_EXERCISES = [
 
   // Dos
   'Traction', 'Pull-up', 'Chin-up', 'Lat pulldown', 'Lat pulldown prise serrée',
+  'Tirage vertical poulie haute', 'Tirage horizontal poulie basse',
   'Rowing barre', 'Rowing haltère', 'Seated row', 'Rowing câble', 'Rowing machine',
   'Soulevé de terre', 'Deadlift roumain', 'Romanian Deadlift', 'Soulevé de terre sumo',
   'Face pull', 'Shrugs barre', 'Shrugs haltères', 'Good morning',
@@ -976,7 +1006,7 @@ const KNOWN_EXERCISES = [
   // Épaules
   'Développé militaire', 'Développé militaire haltères', 'Développé Arnold',
   'Élévation latérale', 'Élévation latérale câble', 'Élévation frontale',
-  'Oiseau haltères', 'Reverse pec deck', 'Upright row', 'Tirage menton',
+  'Oiseau haltères', 'Reverse pec deck', 'Upright row', 'Tirage menton', 'Tirage menton poulie basse',
 
   // Biceps
   'Curl biceps barre', 'Curl biceps haltères', 'Curl marteau', 'Curl concentré',
@@ -1023,13 +1053,14 @@ const EXERCISE_GROUPS = {
     'Écarté décliné', 'Pec deck', 'Chest press machine', 'Cable crossover', 'Poulie pec croisé',
     'Push-up', 'Pompes diamant', 'Pompes larges', 'Développé couché puissance', 'Bench press paused'],
   'Dos': ['Traction', 'Pull-up', 'Chin-up', 'Lat pulldown', 'Lat pulldown prise serrée',
+    'Tirage vertical poulie haute', 'Tirage horizontal poulie basse',
     'Rowing barre', 'Rowing haltère', 'Seated row', 'Rowing câble', 'Rowing machine',
     'Soulevé de terre', 'Deadlift roumain', 'Romanian Deadlift', 'Soulevé de terre sumo',
     'Face pull', 'Shrugs barre', 'Shrugs haltères', 'Good morning',
     'Pull-over haltère', 'Pull-over câble', 'T-bar row', 'Soulevé de terre puissance'],
   'Épaules': ['Développé militaire', 'Développé militaire haltères', 'Développé Arnold',
     'Élévation latérale', 'Élévation latérale câble', 'Élévation frontale',
-    'Oiseau haltères', 'Reverse pec deck', 'Upright row', 'Tirage menton'],
+    'Oiseau haltères', 'Reverse pec deck', 'Upright row', 'Tirage menton', 'Tirage menton poulie basse'],
   'Biceps': ['Curl biceps barre', 'Curl biceps haltères', 'Curl marteau', 'Curl concentré',
     'Curl incliné', 'Curl câble', 'Curl pupitre', 'Curl barre EZ', 'Curl Zottman', 'Curl prise neutre'],
   'Triceps': ['Triceps poulie haute', 'Triceps poulie basse', 'Extension triceps barre',
@@ -1064,8 +1095,8 @@ const GROUP_KEYWORDS = [
   [/squat|leg|jambe|fente|mollet|calf|ischio|quadri/, 'Jambes'],
   [/hip thrust|glute|fessier/, 'Fessiers'],
   [/developpe|bench|pec|pompe|dips?\b|ecarte|chest/, 'Pectoraux'],
-  [/traction|pull|row|rowing|dos|deadlift|souleve|shrug/, 'Dos'],
-  [/epaule|shoulder|militaire|elevation|oiseau|arnold/, 'Épaules'],
+  [/traction|pull|row|rowing|dos|deadlift|souleve|shrug|tirage(?!.*menton)/, 'Dos'],
+  [/epaule|shoulder|militaire|elevation|oiseau|arnold|tirage.*menton/, 'Épaules'],
   [/curl|biceps/, 'Biceps'],
   [/triceps|skull|kickback/, 'Triceps'],
   [/crunch|gainage|abdo|planche|ab wheel|russian twist/, 'Abdominaux'],
@@ -2273,6 +2304,7 @@ function renderProgress() {
   const currentVal = sel.value;
   sel.innerHTML = '<option value="">-- Choisir un exercice --</option>' +
     allExercises.map(n => `<option value="${n}" ${n===currentVal?'selected':''}>${n}</option>`).join('');
+  document.getElementById('merge-exercise-btn').style.display = (sel.value) ? 'block' : 'none';
 
   renderTotalVolumeChart();
   renderVolumeByGroup();
@@ -2520,6 +2552,54 @@ function renderPRGrid(exercises) {
       ${deltaHtml}
     </div>`;
   }).join('');
+}
+
+function onProgressExerciseChange() {
+  const name = document.getElementById('progress-exercise-select').value;
+  document.getElementById('merge-exercise-btn').style.display = name ? 'block' : 'none';
+  renderProgressChart();
+}
+
+// Fusionne deux exercices qui désignent en réalité le même mouvement (ex:
+// "Élévation latérale" / "Élévation latérales" / "Élévation latérale poulie
+// haute") : renomme toutes les occurrences (séances + templates) vers un nom
+// cible commun, pour que l'historique et les PR ne soient plus fragmentés.
+function openMergeExerciseModal() {
+  const name = document.getElementById('progress-exercise-select').value;
+  if (!name) return;
+  document.getElementById('merge-source-name').textContent = name;
+  const targetSelect = document.getElementById('merge-target-select');
+  const others = canonicalExerciseNames(db.sessions.flatMap(s => s.exercises.map(e => e.name)))
+    .filter(n => !sameExercise(n, name));
+  targetSelect.innerHTML = '<option value="">-- Choisir l\'exercice à conserver --</option>' +
+    others.map(n => `<option value="${n}">${n}</option>`).join('');
+  document.getElementById('merge-target-custom').value = '';
+  document.getElementById('merge-target-suggestions').innerHTML = KNOWN_EXERCISES.map(n => `<option value="${n}">`).join('');
+  openModal('modal-merge-exercise');
+}
+
+function confirmMergeExercise() {
+  const sourceName = document.getElementById('merge-source-name').textContent;
+  const custom = document.getElementById('merge-target-custom').value.trim();
+  const targetName = custom || document.getElementById('merge-target-select').value;
+  if (!targetName) { showToast('Choisis ou tape le nom à conserver'); return; }
+  if (sameExercise(sourceName, targetName)) { showToast('Les deux noms sont déjà identiques'); return; }
+
+  let count = 0;
+  db.sessions.forEach(s => {
+    s.exercises.forEach(ex => {
+      if (sameExercise(ex.name, sourceName)) { ex.name = targetName; count++; }
+    });
+  });
+  db.templates.forEach(t => {
+    t.exercises.forEach(ex => {
+      if (typeof ex === 'object' && sameExercise(ex.name, sourceName)) { ex.name = targetName; count++; }
+    });
+  });
+  saveDB();
+  closeModal('modal-merge-exercise');
+  showToast(`Fusionné (${count} occurrence${count>1?'s':''}) !`);
+  renderProgress();
 }
 
 function renderProgressChart() {
