@@ -174,9 +174,11 @@
     @keyframes flameFlicker { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     .next-session-card {
       margin: 0 16px 16px; padding: 16px; border-radius: var(--radius);
-      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.16), rgba(255,107,53,0.08));
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.16), rgba(var(--accent2-rgb),0.08));
       border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px;
     }
+    .next-session-card.cardio { background: linear-gradient(135deg, rgba(var(--accent2-rgb),0.18), rgba(var(--accent-rgb),0.06)); }
+    .next-session-card.both { background: linear-gradient(135deg, rgba(var(--accent-rgb),0.16), rgba(var(--accent2-rgb),0.16)); }
     .next-session-card .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); font-weight: 700; }
     .next-session-card .name { font-size: 16px; font-weight: 800; margin-top: 2px; }
     .pr-banner {
@@ -197,12 +199,14 @@
     .goal-bar-fill.cardio { background: var(--accent2); }
     .goal-bar-label { font-size: 12px; color: var(--text2); margin-top: 8px; }
     .week-plan-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-    .week-day { flex: 1; min-width: 58px; text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--bg3); }
-    .week-day.today { background: rgba(var(--accent-rgb),0.18); border: 1px solid var(--accent); }
-    .week-day.done { opacity: 0.65; }
+    .week-day { flex: 1; min-width: 58px; text-align: center; padding: 10px 4px; border-radius: 10px; background: var(--bg3); cursor: pointer; user-select: none; transition: transform 0.1s; border: 1px solid transparent; }
+    .week-day:active { transform: scale(0.94); }
+    .week-day.today { border-color: var(--accent); }
+    .week-day.type-strength { background: rgba(var(--accent-rgb), 0.28); }
+    .week-day.type-cardio { background: rgba(var(--accent2-rgb), 0.28); }
+    .week-day.type-both { background: linear-gradient(135deg, rgba(var(--accent-rgb),0.28) 0%, rgba(var(--accent-rgb),0.28) 49%, var(--bg3) 49%, var(--bg3) 51%, rgba(var(--accent2-rgb),0.28) 51%, rgba(var(--accent2-rgb),0.28) 100%); }
     .week-day .wd-dow { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; }
     .week-day .wd-label { font-size: 11px; font-weight: 700; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .week-day .wd-sub { font-size: 9px; color: var(--text2); margin-top: 2px; }
 
     .recent-session {
       display: flex; justify-content: space-between; align-items: center;
@@ -424,12 +428,10 @@
       <div id="reminder-banner"></div>
       <div id="next-session-card"></div>
       <div class="card" id="week-plan-card" style="display:none">
-        <div class="card-header">
+        <div class="card-header" style="margin-bottom:6px">
           <div class="card-title">Cette semaine</div>
-          <button class="btn-icon" style="background:transparent;color:var(--text2);padding:4px" onclick="openTrainingDaysModal()" title="Choisir mes jours d'entraînement">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
         </div>
+        <p style="font-size:11px;color:var(--text2);margin-bottom:10px">Touche un jour pour définir son type : repos → renfo → cardio → les deux</p>
         <div class="week-plan-row" id="week-plan-row"></div>
       </div>
       <div class="streak-row">
@@ -920,6 +922,80 @@
   </div>
 </div>
 
+<!-- MODAL: Choix du type de template -->
+<div class="modal-overlay" id="modal-template-type-choice">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Nouveau template</h3>
+      <button class="btn-icon" onclick="closeModal('modal-template-type-choice')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Ce template contient des exercices de musculation, ou une activité cardio ?</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px" onclick="chooseTemplateType('strength')">🏋️ Renfo</button>
+        <button class="btn btn-secondary btn-full" style="justify-content:flex-start;gap:10px" onclick="chooseTemplateType('cardio')">🏃 Cardio</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Template Cardio -->
+<div class="modal-overlay" id="modal-template-cardio">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="template-cardio-modal-title">Nouveau template cardio</h3>
+      <button class="btn-icon" onclick="closeModal('modal-template-cardio')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nom du template</label>
+        <input class="form-input" id="template-cardio-name-input" type="text" placeholder="ex: Sortie vélo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select class="form-input" id="template-cardio-type" onchange="onTemplateCardioTypeChange()">
+        </select>
+      </div>
+      <div class="form-group" id="template-cardio-custom-type-group" style="display:none">
+        <label class="form-label">Précise le type</label>
+        <input class="form-input" id="template-cardio-custom-type" type="text" placeholder="Handball, Escalade, Boxe…">
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label class="form-label">Durée cible (min)</label>
+          <input class="form-input" id="template-cardio-duration" type="number" inputmode="numeric" min="0" placeholder="60">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Distance cible (km)</label>
+          <input class="form-input" id="template-cardio-distance" type="number" inputmode="decimal" min="0" step="0.1" placeholder="10">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Intensité</label>
+        <select class="form-input" id="template-cardio-intensity">
+          <option value="Faible">Faible</option>
+          <option value="Moyenne" selected>Moyenne</option>
+          <option value="Élevée">Élevée</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Notes (optionnel)</label>
+        <textarea class="form-input" id="template-cardio-notes" rows="2" placeholder="Parcours, sensations…" style="resize:none"></textarea>
+      </div>
+      <p style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.4">Ces valeurs ne sont que des valeurs par défaut : au moment de démarrer ce template, le Log rapide s'ouvre pré-rempli et tu peux les ajuster pour le jour même.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-full" onclick="saveCardioTemplate()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Poids de corps -->
 <div class="modal-overlay" id="modal-bodyweight">
   <div class="modal">
@@ -952,25 +1028,6 @@
   </div>
 </div>
 
-<!-- MODAL: Jours d'entraînement -->
-<div class="modal-overlay" id="modal-training-days">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <h3>Jours d'entraînement habituels</h3>
-      <button class="btn-icon" onclick="closeModal('modal-training-days')">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5">Sélectionne les jours où tu t'entraînes généralement — ça sert uniquement à prévoir la carte "Cette semaine" sur l'accueil quand un programme est actif. Tu peux t'entraîner un autre jour sans problème, ce n'est qu'une prévision.</p>
-      <div class="tag-list" id="training-days-picker"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary btn-full" onclick="saveTrainingDays()">Enregistrer</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL: Export/Import -->
 <div class="modal-overlay" id="modal-sync">
@@ -1354,11 +1411,25 @@ function renderNextSessionCard() {
   const nextId = program.templateIds[program.currentIndex];
   const tmpl = db.templates.find(t => t.id === nextId);
   if (!tmpl) { container.innerHTML = ''; return; }
+  const isCardio = tmpl.type === 'cardio';
+
+  // Double indication : si le planning du jour (carte "Cette semaine")
+  // prévoit aussi l'autre type en plus de ce que le programme propose
+  // (ex: programme sur du renfo mais le planning du jour est sur "les
+  // deux"), on l'affiche en complément, sans faire avancer le programme.
+  const plan = getWeeklyTypePlan();
+  const dow = (new Date().getDay() + 6) % 7;
+  const todayType = plan[dow] || 'none';
+  const otherTypeNeeded = isCardio
+    ? ((todayType === 'strength' || todayType === 'both') ? 'strength' : null)
+    : ((todayType === 'cardio' || todayType === 'both') ? 'cardio' : null);
+
   container.innerHTML = `
-    <div class="next-session-card">
+    <div class="next-session-card ${isCardio ? 'cardio' : ''} ${otherTypeNeeded ? 'both' : ''}">
       <div>
-        <div class="lbl">Prochaine séance · ${program.name}</div>
-        <div class="name">${tmpl.name}</div>
+        <div class="lbl">${isCardio ? '🏃' : '🏋️'} Prochaine séance · ${program.name}</div>
+        <div class="name">${tmpl.name}${isCardio && tmpl.sportType ? ' · ' + tmpl.sportType : ''}</div>
+        ${otherTypeNeeded ? `<div class="lbl" style="margin-top:4px;color:${otherTypeNeeded==='cardio' ? 'var(--accent2)' : 'var(--accent)'}">+ ${otherTypeNeeded === 'cardio' ? '🏃 Cardio' : '🏋️ Renfo'} prévu aujourd'hui</div>` : ''}
       </div>
       <button class="btn btn-primary btn-sm" onclick="startNewSession()">Démarrer</button>
     </div>`;
@@ -1512,10 +1583,18 @@ function renderReminderBanner() {
   el.innerHTML = `<div class="reminder-banner" onclick="editReminderThreshold()">⏰ Ça fait ${daysSince} jours que tu n'as pas loggé de séance — direction la salle ? 💪</div>`;
 }
 
-// ==================== JOURS D'ENTRAÎNEMENT & PRÉVISION DE LA SEMAINE ====================
+// ==================== PLANNING HEBDO (RENFO / CARDIO PAR JOUR) ====================
+// Remplace l'ancien réglage "jours d'entraînement" (juste on/off) par un
+// planning par jour de la semaine, directement modifiable au clic sur la
+// carte "Cette semaine" de l'accueil : Repos → Renfo → Cardio → Les deux →
+// Repos. C'est un planning récurrent (par jour de semaine, pas par date),
+// purement indicatif — ça ne bloque rien si tu t'entraînes un autre jour.
 const WEEKDAY_NAMES = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-let tempTrainingDays = [];
+const DAY_TYPE_CYCLE = ['none', 'strength', 'cardio', 'both'];
+const DAY_TYPE_LABELS = { none: 'Repos', strength: 'Renfo', cardio: 'Cardio', both: 'Renfo + Cardio' };
 
+// Ancien réglage (avant la version type-aware), gardé uniquement pour migrer
+// en douceur les utilisateurs qui avaient déjà choisi leurs jours.
 function getTrainingDays() {
   try {
     const raw = JSON.parse(localStorage.getItem('fittrack_training_days'));
@@ -1524,76 +1603,74 @@ function getTrainingDays() {
   return [0,1,2,3,4]; // par défaut : lundi à vendredi
 }
 
-function openTrainingDaysModal() {
-  tempTrainingDays = getTrainingDays().slice();
-  renderTrainingDaysPicker();
-  openModal('modal-training-days');
+function getWeeklyTypePlan() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('fittrack_weekly_plan'));
+    if (raw && typeof raw === 'object') return raw;
+  } catch(e) {}
+  // Migration depuis l'ancien réglage "jours d'entraînement"
+  const legacy = getTrainingDays();
+  const plan = {};
+  for (let i = 0; i < 7; i++) plan[i] = legacy.includes(i) ? 'strength' : 'none';
+  return plan;
 }
 
-function renderTrainingDaysPicker() {
-  const el = document.getElementById('training-days-picker');
-  el.innerHTML = WEEKDAY_NAMES.map((name, i) => {
-    const active = tempTrainingDays.includes(i);
-    return `<div class="tag" style="cursor:pointer;${active?'background:var(--accent);color:#000;font-weight:700':''}" onclick="toggleTrainingDay(${i})">${name}</div>`;
-  }).join('');
+function setWeeklyTypePlan(plan) {
+  localStorage.setItem('fittrack_weekly_plan', JSON.stringify(plan));
 }
 
-function toggleTrainingDay(i) {
-  const idx = tempTrainingDays.indexOf(i);
-  if (idx > -1) tempTrainingDays.splice(idx, 1);
-  else tempTrainingDays.push(i);
-  renderTrainingDaysPicker();
+function cycleDayType(dow) {
+  const plan = getWeeklyTypePlan();
+  const current = plan[dow] || 'none';
+  const idx = DAY_TYPE_CYCLE.indexOf(current);
+  plan[dow] = DAY_TYPE_CYCLE[(idx + 1) % DAY_TYPE_CYCLE.length];
+  setWeeklyTypePlan(plan);
+  renderWeekPlan();
 }
 
-function saveTrainingDays() {
-  localStorage.setItem('fittrack_training_days', JSON.stringify(tempTrainingDays));
-  closeModal('modal-training-days');
-  renderHome();
-  showToast('Jours d\'entraînement mis à jour !');
-}
-
-// Prévision des 7 prochains jours à partir du programme actif et des jours
-// d'entraînement choisis — purement indicatif, ça ne bloque rien si tu changes
-// de jour, ça se recalera automatiquement à la prochaine séance loggée.
+// Affiche la semaine en cours (lundi → dimanche) : pour chaque jour déjà
+// passé/loggé, ce qui a réellement été fait ; pour les autres, le planning
+// prévu. Toujours cliquable pour faire tourner le planning de ce jour-là.
 function renderWeekPlan() {
   const card = document.getElementById('week-plan-card');
   const row = document.getElementById('week-plan-row');
   if (!card || !row) return;
-  const program = getActiveProgram();
-  if (!program) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const trainingDays = getTrainingDays();
-  const today = new Date(); today.setHours(0,0,0,0);
-  const sessionDates = new Set(db.sessions.map(s => new Date(s.date).toDateString()));
+  const plan = getWeeklyTypePlan();
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); weekStart.setHours(0,0,0,0);
+  const todayKey = new Date().toDateString();
 
-  let runningIndex = program.currentIndex;
+  const doneTypesByDay = {};
+  db.sessions.forEach(s => {
+    const d = new Date(s.date);
+    if (d < weekStart) return;
+    const key = d.toDateString();
+    if (!doneTypesByDay[key]) doneTypesByDay[key] = new Set();
+    doneTypesByDay[key].add(s.type === 'cardio' ? 'cardio' : 'strength');
+  });
+
   const cells = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(today); d.setDate(today.getDate() + i);
-    const dow = (d.getDay() + 6) % 7; // 0 = lundi
-    const doneToday = sessionDates.has(d.toDateString());
-    let label, sub, cls;
-    if (doneToday) {
-      label = '✅'; sub = 'Fait'; cls = 'done';
-    } else if (trainingDays.includes(dow)) {
-      const tmplId = program.templateIds[runningIndex % program.templateIds.length];
-      const tmpl = db.templates.find(t => t.id === tmplId);
-      label = tmpl ? tmpl.name : '?';
-      sub = 'Prévu';
-      cls = i === 0 ? 'today' : '';
-      runningIndex++;
+    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i);
+    const key = d.toDateString();
+    const done = doneTypesByDay[key];
+    let type, isDone;
+    if (done) {
+      isDone = true;
+      type = (done.has('strength') && done.has('cardio')) ? 'both' : done.has('cardio') ? 'cardio' : 'strength';
     } else {
-      label = '—'; sub = 'Repos'; cls = 'rest';
+      isDone = false;
+      type = plan[i] || 'none';
     }
-    cells.push({ dow: WEEKDAY_NAMES[dow], label, sub, cls });
+    cells.push({ dow: WEEKDAY_NAMES[i], type, isDone, isToday: key === todayKey, i });
   }
 
   row.innerHTML = cells.map(c => `
-    <div class="week-day ${c.cls}">
+    <div class="week-day type-${c.type} ${c.isToday ? 'today' : ''}" onclick="cycleDayType(${c.i})">
       <div class="wd-dow">${c.dow}</div>
-      <div class="wd-label" title="${c.label}">${c.label}</div>
-      <div class="wd-sub">${c.sub}</div>
+      <div class="wd-label">${c.isDone ? '✅ ' : ''}${DAY_TYPE_LABELS[c.type]}</div>
     </div>`).join('');
 }
 
@@ -1673,7 +1750,6 @@ function startNewSession() {
   }
   populateTemplateSelect();
   document.getElementById('session-name-input').value = '';
-  document.getElementById('template-select').value = '';
   renderRestOptions();
   const repeatBtn = document.getElementById('repeat-free-btn');
   const lastFree = findLastFreeSession();
@@ -1729,7 +1805,7 @@ function startQuickRepeat() {
 function populateTemplateSelect() {
   const sel = document.getElementById('template-select');
   sel.innerHTML = '<option value="">Séance libre</option>' +
-    db.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    db.templates.map(t => `<option value="${t.id}">${t.type === 'cardio' ? '🏃 ' : ''}${t.name}</option>`).join('');
   const program = getActiveProgram();
   if (program) {
     const nextId = program.templateIds[program.currentIndex];
@@ -1884,6 +1960,12 @@ function confirmStartSession() {
   const name = document.getElementById('session-name-input').value.trim() || 'Séance';
   const tmplId = document.getElementById('template-select').value;
   const tmpl = tmplId ? db.templates.find(t => t.id === tmplId) : null;
+
+  if (tmpl && tmpl.type === 'cardio') {
+    closeModal('modal-start');
+    openQuickLogFromTemplate(tmpl);
+    return;
+  }
 
   activeSession = {
     id: Date.now().toString(),
@@ -2274,8 +2356,14 @@ function onQuickLogTypeChange() {
   document.getElementById('quicklog-custom-type-group').style.display = isOther ? 'block' : 'none';
 }
 
+// Si le Log rapide a été ouvert en démarrant un template cardio, on retient
+// son id ici pour pouvoir faire avancer le programme actif à la sauvegarde
+// (uniquement si ce template était bien la prochaine étape du programme).
+let quickLogTemplateId = null;
+
 function openQuickLog() {
   if (activeSession) { showToast('Termine ta séance en cours avant d\'en logger une autre'); return; }
+  quickLogTemplateId = null;
   document.getElementById('quicklog-duration').value = '';
   document.getElementById('quicklog-distance').value = '';
   document.getElementById('quicklog-notes').value = '';
@@ -2286,6 +2374,31 @@ function openQuickLog() {
     `<option value="${CARDIO_TYPE_OTHER}">Autres…</option>`;
   select.value = CARDIO_TYPES_BASE[0];
   onQuickLogTypeChange();
+  openModal('modal-quicklog');
+}
+
+// Démarrer un template cardio (depuis "Prochaine séance" ou "Nouvelle
+// séance") ouvre le Log rapide pré-rempli avec ses valeurs par défaut,
+// plutôt que d'enregistrer directement la séance sans rien demander.
+function openQuickLogFromTemplate(tmpl) {
+  if (activeSession) { showToast('Termine ta séance en cours avant d\'en logger une autre'); return; }
+  quickLogTemplateId = tmpl.id;
+  const options = getCardioTypeOptions();
+  const select = document.getElementById('quicklog-type');
+  select.innerHTML = options.map(t => `<option value="${t}">${t}</option>`).join('') +
+    `<option value="${CARDIO_TYPE_OTHER}">Autres…</option>`;
+  if (options.includes(tmpl.sportType)) {
+    select.value = tmpl.sportType;
+    document.getElementById('quicklog-custom-type').value = '';
+  } else {
+    select.value = CARDIO_TYPE_OTHER;
+    document.getElementById('quicklog-custom-type').value = tmpl.sportType || '';
+  }
+  onQuickLogTypeChange();
+  document.getElementById('quicklog-duration').value = tmpl.defaultDuration || '';
+  document.getElementById('quicklog-distance').value = tmpl.defaultDistanceKm || '';
+  document.getElementById('quicklog-intensity').value = tmpl.defaultIntensity || 'Moyenne';
+  document.getElementById('quicklog-notes').value = tmpl.notes || '';
   openModal('modal-quicklog');
 }
 
@@ -2314,6 +2427,19 @@ function saveQuickLog() {
   db.sessions.push(session);
   saveDB();
   saveBackupSnapshot();
+
+  // Ne fait avancer le programme actif que si ce log correspondait bien au
+  // template cardio proposé en tant que prochaine étape de la rotation —
+  // un log cardio "libre" (bouton Cardio de l'accueil) ne doit pas la faire
+  // avancer toute seule.
+  if (quickLogTemplateId) {
+    const program = getActiveProgram();
+    if (program && program.templateIds[program.currentIndex] === quickLogTemplateId) {
+      advanceProgram();
+    }
+    quickLogTemplateId = null;
+  }
+
   closeModal('modal-quicklog');
   renderHome();
   showToast('Séance enregistrée !');
@@ -3045,23 +3171,26 @@ function renderTemplates() {
     return;
   }
   list.innerHTML = db.templates.map((t, i) => {
-    const exLines = t.exercises.map(ex => {
-      const isObj = typeof ex === 'object';
-      const name = isObj ? ex.name : ex;
-      const details = isObj
-        ? [ex.defaultSets ? ex.defaultSets+'×' : '', ex.defaultReps ? ex.defaultReps+' reps' : '', ex.defaultWeight ? ex.defaultWeight+' kg' : ''].filter(Boolean).join(' ')
-        : '';
-      const isFixed = isObj && ex.progression === false;
-      return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px">${name}${isFixed ? '<span class="fixed-badge">📌 Fixe</span>' : ''}</span>
-        ${details ? `<span style="font-size:12px;color:var(--accent)">${details}</span>` : ''}
-      </div>`;
-    }).join('');
-    const estVol = estimateTemplateVolume(t);
+    const isCardio = t.type === 'cardio';
+    const bodyHtml = isCardio
+      ? `<div style="font-size:13px;color:var(--text2)">${cardioTypeIcon(t.sportType)} ${t.sportType}${[t.defaultDuration ? t.defaultDuration+' min' : '', t.defaultDistanceKm ? t.defaultDistanceKm+' km' : '', t.defaultIntensity || ''].filter(Boolean).length ? ' · ' + [t.defaultDuration ? t.defaultDuration+' min' : '', t.defaultDistanceKm ? t.defaultDistanceKm+' km' : '', t.defaultIntensity || ''].filter(Boolean).join(' · ') : ''}</div>`
+      : t.exercises.map(ex => {
+          const isObj = typeof ex === 'object';
+          const name = isObj ? ex.name : ex;
+          const details = isObj
+            ? [ex.defaultSets ? ex.defaultSets+'×' : '', ex.defaultReps ? ex.defaultReps+' reps' : '', ex.defaultWeight ? ex.defaultWeight+' kg' : ''].filter(Boolean).join(' ')
+            : '';
+          const isFixed = isObj && ex.progression === false;
+          return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px">${name}${isFixed ? '<span class="fixed-badge">📌 Fixe</span>' : ''}</span>
+            ${details ? `<span style="font-size:12px;color:var(--accent)">${details}</span>` : ''}
+          </div>`;
+        }).join('');
+    const estVol = isCardio ? 0 : estimateTemplateVolume(t);
     return `
     <div class="card" style="margin-bottom:12px">
       <div class="card-header">
-        <div class="session-name" style="flex:1;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</div>
+        <div class="session-name" style="flex:1;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isCardio ? '🏃 ' : ''}${t.name}</div>
         <div class="template-actions" style="flex-shrink:0">
           <button class="btn-icon" style="background:transparent;border:none;color:var(--text2);padding:6px" onclick="moveTemplate(${i},-1)" ${i===0?'disabled':''} title="Monter">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
@@ -3080,7 +3209,7 @@ function renderTemplates() {
           </button>
         </div>
       </div>
-      <div>${exLines}</div>
+      <div>${bodyHtml}</div>
       ${estVol > 0 ? `<div style="font-size:12px;color:var(--text2);margin-top:8px">≈ ${Math.round(estVol).toLocaleString('fr')} kg de volume estimé</div>` : ''}
     </div>`;
   }).join('');
@@ -3112,9 +3241,10 @@ function duplicateTemplate(id) {
   const tmpl = db.templates.find(t => t.id === id);
   if (!tmpl) return;
   const copy = {
+    ...tmpl,
     id: Date.now().toString(),
     name: tmpl.name + ' (copie)',
-    exercises: tmpl.exercises.map(ex => typeof ex === 'object' ? {...ex} : ex)
+    exercises: (tmpl.exercises || []).map(ex => typeof ex === 'object' ? {...ex} : ex)
   };
   const idx = db.templates.indexOf(tmpl);
   db.templates.splice(idx + 1, 0, copy);
@@ -3139,7 +3269,20 @@ function resetTmplAddForm() {
   updateTmplModeBtn();
 }
 
+// "Nouveau" demande d'abord Renfo ou Cardio avant d'ouvrir le bon éditeur —
+// un template Cardio peut ensuite être inclus dans un programme (rotation)
+// au même titre qu'un template de renfo.
 function openNewTemplate() {
+  openModal('modal-template-type-choice');
+}
+
+function chooseTemplateType(type) {
+  closeModal('modal-template-type-choice');
+  if (type === 'cardio') openNewCardioTemplate();
+  else openNewStrengthTemplate();
+}
+
+function openNewStrengthTemplate() {
   currentTemplateEdit = null;
   tempExercises = [];
   resetTmplAddForm();
@@ -3154,6 +3297,7 @@ function openNewTemplate() {
 function editTemplate(id) {
   const tmpl = db.templates.find(t=>t.id===id);
   if (!tmpl) return;
+  if (tmpl.type === 'cardio') { openEditCardioTemplate(tmpl); return; }
   currentTemplateEdit = id;
   // Normalise les anciens formats (string → objet), progression = true par défaut
   tempExercises = tmpl.exercises.map(ex =>
@@ -3166,6 +3310,86 @@ function editTemplate(id) {
   document.getElementById('template-modal-title').textContent = 'Modifier le template';
   renderTempExerciseList();
   openModal('modal-template');
+}
+
+// ==================== TEMPLATE CARDIO ====================
+// Mêmes champs que le "Log rapide" cardio de l'accueil, mais enregistrés
+// comme valeurs par défaut du template : quand ce template est démarré
+// (ex: depuis "Prochaine séance"), le Log rapide s'ouvre pré-rempli avec
+// ces valeurs plutôt que de créer directement une séance.
+function openNewCardioTemplate() {
+  currentTemplateEdit = null;
+  document.getElementById('template-cardio-modal-title').textContent = 'Nouveau template cardio';
+  document.getElementById('template-cardio-name-input').value = '';
+  populateTemplateCardioTypeSelect('');
+  document.getElementById('template-cardio-duration').value = '';
+  document.getElementById('template-cardio-distance').value = '';
+  document.getElementById('template-cardio-intensity').value = '';
+  document.getElementById('template-cardio-notes').value = '';
+  openModal('modal-template-cardio');
+}
+
+function openEditCardioTemplate(tmpl) {
+  currentTemplateEdit = tmpl.id;
+  document.getElementById('template-cardio-modal-title').textContent = 'Modifier le template';
+  document.getElementById('template-cardio-name-input').value = tmpl.name;
+  populateTemplateCardioTypeSelect(tmpl.sportType);
+  document.getElementById('template-cardio-duration').value = tmpl.defaultDuration || '';
+  document.getElementById('template-cardio-distance').value = tmpl.defaultDistanceKm || '';
+  document.getElementById('template-cardio-intensity').value = tmpl.defaultIntensity || '';
+  document.getElementById('template-cardio-notes').value = tmpl.notes || '';
+  openModal('modal-template-cardio');
+}
+
+function populateTemplateCardioTypeSelect(preselect) {
+  const sel = document.getElementById('template-cardio-type');
+  const options = getCardioTypeOptions();
+  sel.innerHTML = options.map(t => `<option value="${t}">${t}</option>`).join('') +
+    `<option value="${CARDIO_TYPE_OTHER}">Autres…</option>`;
+  const customGroup = document.getElementById('template-cardio-custom-type-group');
+  const customInput = document.getElementById('template-cardio-custom-type');
+  if (preselect && options.includes(preselect)) {
+    sel.value = preselect;
+    customGroup.style.display = 'none';
+    customInput.value = '';
+  } else if (preselect) {
+    sel.value = CARDIO_TYPE_OTHER;
+    customGroup.style.display = 'block';
+    customInput.value = preselect;
+  } else {
+    sel.value = options[0];
+    customGroup.style.display = 'none';
+    customInput.value = '';
+  }
+}
+
+function onTemplateCardioTypeChange() {
+  const isOther = document.getElementById('template-cardio-type').value === CARDIO_TYPE_OTHER;
+  document.getElementById('template-cardio-custom-type-group').style.display = isOther ? 'block' : 'none';
+}
+
+function saveCardioTemplate() {
+  const name = document.getElementById('template-cardio-name-input').value.trim();
+  if (!name) { showToast('Donne un nom au template !'); return; }
+  const selected = document.getElementById('template-cardio-type').value;
+  const customType = document.getElementById('template-cardio-custom-type').value.trim();
+  if (selected === CARDIO_TYPE_OTHER && !customType) { showToast('Précise le type de cardio'); return; }
+  const sportType = selected === CARDIO_TYPE_OTHER ? customType : selected;
+  const defaultDuration = parseInt(document.getElementById('template-cardio-duration').value) || 0;
+  const defaultDistanceKm = parseFloat(document.getElementById('template-cardio-distance').value) || 0;
+  const defaultIntensity = document.getElementById('template-cardio-intensity').value;
+  const notes = document.getElementById('template-cardio-notes').value.trim();
+
+  if (currentTemplateEdit) {
+    const t = db.templates.find(t => t.id === currentTemplateEdit);
+    if (t) Object.assign(t, { name, type: 'cardio', sportType, defaultDuration, defaultDistanceKm, defaultIntensity, notes, exercises: [] });
+  } else {
+    db.templates.push({ id: Date.now().toString(), name, type: 'cardio', sportType, defaultDuration, defaultDistanceKm, defaultIntensity, notes, exercises: [] });
+  }
+  saveDB();
+  closeModal('modal-template-cardio');
+  renderTemplates();
+  showToast(currentTemplateEdit ? 'Template modifié !' : 'Template créé !');
 }
 
 function addExerciseToTemplate() {
@@ -3286,7 +3510,7 @@ function renderProgramTemplateList() {
   el.innerHTML = db.templates.map(t => {
     const pos = tempProgramTemplateIds.indexOf(t.id);
     return `<div class="tag" style="width:100%;justify-content:space-between;margin-bottom:6px;cursor:pointer" onclick="toggleProgramTemplate('${t.id}')">
-      <span>${pos > -1 ? (pos+1) + '. ' : ''}${t.name}</span>
+      <span>${pos > -1 ? (pos+1) + '. ' : ''}${t.type === 'cardio' ? '🏃 ' : ''}${t.name}</span>
       <span style="color:${pos>-1?'var(--accent)':'var(--text2)'}">${pos>-1?'✓':'+'}</span>
     </div>`;
   }).join('');
